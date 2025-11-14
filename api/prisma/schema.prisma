@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Estabelecimento {
+  id               Int      @id @default(autoincrement())
+  nome             String
+  endereco         String?
+  cpf_cnpj         String?
+  telefone         String?
+  email            String?  @unique
+  logo_path        String?
+  mensagem_voucher String?
+  createdAt        DateTime @default(now())
+
+  usuarios Usuario[]
+  // removido: clientes Cliente[]  -- relacionamento é via CartaoFidelidade
+  cartoes  CartaoFidelidade[]
+  vouchers Voucher[]
+}
+
+model Usuario {
+  id                Int      @id @default(autoincrement())
+  estabelecimentoId Int
+  nomeUsuario       String
+  senhaHash         String
+  papel             String   @default("operador")
+  criadoEm          DateTime @default(now())
+
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id])
+}
+
+model Cliente {
+  id       Int      @id @default(autoincrement())
+  nome     String
+  telefone String
+  email    String?
+  criadoEm DateTime @default(now())
+
+  cartoes  CartaoFidelidade[]
+  vouchers Voucher[]
+}
+
+model CartaoFidelidade {
+  id                Int      @id @default(autoincrement())
+  codigo            String   @unique
+  clienteId         Int
+  estabelecimentoId Int
+  pontos            Int      @default(0)
+  criadoEm          DateTime @default(now())
+
+  cliente         Cliente         @relation(fields: [clienteId], references: [id])
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id])
+  movimentos      Movimento[]
+  vouchers        Voucher[]
+}
+
+model Movimento {
+  id        Int      @id @default(autoincrement())
+  cartaoId  Int
+  tipo      String
+  pontos    Int
+  descricao String?
+  criadoEm  DateTime @default(now())
+
+  cartao CartaoFidelidade @relation(fields: [cartaoId], references: [id])
+}
+
+model Voucher {
+  id                Int      @id @default(autoincrement())
+  cartaoId          Int
+  clienteId         Int
+  estabelecimentoId Int
+  mensagem_enviada  String
+  numero_cliente    String
+  enviado_por_id    Int
+  criadoEm          DateTime @default(now())
+  status            String   @default("enviado")
+
+  cartao          CartaoFidelidade @relation(fields: [cartaoId], references: [id])
+  cliente         Cliente          @relation(fields: [clienteId], references: [id])
+  estabelecimento Estabelecimento  @relation(fields: [estabelecimentoId], references: [id])
+}

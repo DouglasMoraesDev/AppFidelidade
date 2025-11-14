@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loyalty Card Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Lato:wght@400;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --color-primary: #0D9488;
+        --color-primary-focus: #0F766E;
+        --color-secondary: #0891B2;
+        --color-background: #1E293B;
+        --color-surface: #334155;
+        --color-on-surface: #F1F5F9;
+        --color-on-surface-secondary: #94A3B8;
+        --font-family: 'Inter', sans-serif;
+      }
+      body {
+        font-family: var(--font-family);
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'primary': 'var(--color-primary)',
+              'primary-focus': 'var(--color-primary-focus)',
+              'secondary': 'var(--color-secondary)',
+              'background': 'var(--color-background)',
+              'surface': 'var(--color-surface)',
+              'on-surface': 'var(--color-on-surface)',
+              'on-surface-secondary': 'var(--color-on-surface-secondary)',
+            },
+            fontFamily: {
+              sans: ['var(--font-family)', 'sans-serif'],
+            }
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-background">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
