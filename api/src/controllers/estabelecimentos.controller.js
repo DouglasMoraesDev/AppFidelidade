@@ -7,63 +7,89 @@ const path = require('path');
 
 async function criarEstabelecimento(req, res) {
   try {
-    // Debug logs para inspecionar request
+    // debug
     console.log('=== criarEstabelecimento - req.body ===');
     console.log(req.body);
     console.log('=== criarEstabelecimento - req.file ===');
     console.log(req.file);
 
-    const { nome, endereco, cpf_cnpj, telefone, email, mensagem_voucher, nomeUsuario, senha } = req.body;
-    if (!nome || !nomeUsuario || !senha) {
-      return res.status(400).json({ error: 'nome, nomeUsuario e senha são obrigatórios' });
+    const {
+      nome,
+      endereco,
+      cpf_cnpj,
+      telefone,
+      email,
+      mensagem_voucher,
+      nomeUsuario,
+      senha
+    } = req.body;
+
+    // validações básicas
+    if (!nome) return res.status(400).json({ error: 'nome é obrigatório' });
+    if (!nomeUsuario) return res.status(400).json({ error: 'nomeUsuario é obrigatório' });
+    if (!senha) return res.status(400).json({ error: 'senha é obrigatória' });
+
+    // checar duplicados
+    if (email) {
+      const existente = await prisma.estabelecimento.findUnique({ where: { email } }).catch(() => null);
+      if (existente) return res.status(409).json({ error: 'Email já cadastrado em outro estabelecimento' });
     }
 
-    // Cria estabelecimento
+    const usuarioExistente = await prisma.usuario.findFirst({ where: { nomeUsuario } }).catch(() => null);
+    if (usuarioExistente) return res.status(409).json({ error: 'nomeUsuario já existe' });
+
+    // Criar estabelecimento
     const estab = await prisma.estabelecimento.create({
       data: {
         nome,
-        endereco,
-        cpf_cnpj,
-        telefone,
-        email,
-        mensagem_voucher
+        endereco: endereco || null,
+        cpf_cnpj: cpf_cnpj || null,
+        telefone: telefone || null,
+        email: email || null,
+        mensagem_voucher: mensagem_voucher || null
+        // logo_path será atualizado depois, se houver arquivo
       }
     });
 
-    // Processa upload do logo (se houver)
+    // Se vier arquivo de logo via multer, renomear para incluir extensão e id
     let logoPath = null;
     if (req.file) {
       try {
-        const ext = path.extname(req.file.originalname) || '.png';
+        const original = req.file.originalname || '';
+        const ext = path.extname(original) || path.extname(req.file.path) || '';
+        // pasta onde multer salvou o arquivo
+        const destDir = req.file.destination || path.dirname(req.file.path);
         const newName = `logo_estab_${estab.id}${ext}`;
-        const dest = path.join(__dirname, '..', '..', 'img', newName);
+        const newPath = path.join(destDir, newName);
 
-        // mover arquivo temporário para pasta de imagens
-        await fsp.rename(req.file.path, dest);
-
+        // mover/renomear arquivo
+        await fsp.rename(req.file.path, newPath);
+        // guarda caminho relativo para servir arquivos estáticos (ajuste conforme sua rota estática)
         logoPath = `/img/${newName}`;
-        await prisma.estabelecimento.update({ where: { id: estab.id }, data: { logo_path: logoPath }});
-      } catch (errMove) {
-        console.error('Erro ao mover arquivo de logo:', errMove);
-        // tenta remover arquivo temporário se existir
-        try { if (req.file && req.file.path) await fsp.unlink(req.file.path); } catch(e){/*ignore*/}
 
-        // Mas não falha a criação do estabelecimento por causa do upload
-        logoPath = null;
+        // atualiza registro do estabelecimento com logo_path
+        await prisma.estabelecimento.update({
+          where: { id: estab.id },
+          data: { logo_path: logoPath }
+        });
+      } catch (errFile) {
+        console.error('Erro ao processar logo:', errFile);
+        // não interrompe a criação do estabelecimento; apenas informa que logo não foi salva
       }
     }
 
-    // Cria usuário (hash da senha)
+    // Criar usuário administrador vinculado ao estabelecimento
     const senhaHash = await bcrypt.hash(senha, 10);
     const usuario = await prisma.usuario.create({
       data: {
         estabelecimentoId: estab.id,
         nomeUsuario,
-        senhaHash
+        senhaHash,
+        papel: 'administrador' // papel padrão para o primeiro usuário
       }
     });
 
-    // Retorna dados (omitindo senhaHash)
+    // monta retorno (omitindo senhaHash)
     const result = {
       estabelecimento: { ...estab, logo_path: logoPath },
       usuario: { id: usuario.id, nomeUsuario: usuario.nomeUsuario }
@@ -73,6 +99,12 @@ async function criarEstabelecimento(req, res) {
     return res.status(201).json(result);
   } catch (err) {
     console.error('Erro criarEstabelecimento:', err);
+
+    // tratar erros de banco como duplicidade de unique
+    if (err && err.code && (err.code === 'P2002' || err.code === 'ER_DUP_ENTRY')) {
+      return res.status(409).json({ error: 'Dado duplicado (email ou nomeUsuario já cadastrado)' });
+    }
+
     return res.status(500).json({ error: 'Erro interno ao criar estabelecimento' });
   }
 }

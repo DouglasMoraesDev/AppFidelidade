@@ -1,3 +1,4 @@
+// frontend/src/App.tsx
 import React, { useState, useCallback, useEffect } from 'react';
 import { Client, Page, Establishment, SuperAdminPage, Theme, Payment } from './types';
 import Layout from './components/layout/Layout';
@@ -18,19 +19,29 @@ import SuperAdminDashboard from './components/pages/SuperAdminDashboard';
 import SuperAdminEstablishments from './components/pages/SuperAdminEstablishments';
 import SuperAdminThemeSettings from './components/pages/SuperAdminThemeSettings';
 
+import { login as apiLogin } from './utils/api';
+
 const getLatestPaymentDate = (paymentHistory: Payment[]): Date | null => {
-    if (!paymentHistory || paymentHistory.length === 0) {
-        return null;
-    }
-    // Sort by date descending and take the first one
-    const sortedHistory = [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    return new Date(sortedHistory[0].date);
+  if (!paymentHistory || paymentHistory.length === 0) return null;
+  const sortedHistory = [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return new Date(sortedHistory[0].date);
 };
 
+const STORAGE_KEY = 'establishments_v1';
 
 const App: React.FC = () => {
   // --- STATE MANAGEMENT ---
-  const [establishments, setEstablishments] = useState<Establishment[]>([]);
+  const [establishments, setEstablishments] = useState<Establishment[]>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw) as Establishment[];
+      return [];
+    } catch (err) {
+      console.warn('Erro ao ler establishments do localStorage', err);
+      return [];
+    }
+  });
+
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [currentSuperAdminPage, setCurrentSuperAdminPage] = useState<SuperAdminPage>('superDashboard');
   const [theme, setTheme] = useState<Theme>({
@@ -48,7 +59,7 @@ const App: React.FC = () => {
   const [loggedInEstablishment, setLoggedInEstablishment] = useState<Establishment | null>(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
-  
+
   // Apply theme changes to CSS variables
   useEffect(() => {
     const root = document.documentElement;
@@ -59,6 +70,15 @@ const App: React.FC = () => {
     root.style.setProperty('--color-surface', theme.surface);
     root.style.setProperty('--font-family', theme.fontFamily);
   }, [theme]);
+
+  // persist establishments to localStorage whenever mudarem
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(establishments));
+    } catch (err) {
+      console.warn('Erro ao salvar establishments no localStorage', err);
+    }
+  }, [establishments]);
 
   // --- SUPER ADMIN LOGIC ---
   const handleSuperAdminLogin = (user: string, pass: string) => {
@@ -77,10 +97,10 @@ const App: React.FC = () => {
   const deleteEstablishmentFromAdmin = (establishmentId: number) => {
     setEstablishments(prev => prev.filter(e => e.id !== establishmentId));
   };
-  
+
   const handleSuperAdminLogout = () => {
-      setIsSuperAdmin(false);
-      setCurrentView('chooser');
+    setIsSuperAdmin(false);
+    setCurrentView('chooser');
   };
 
   // --- ESTABLISHMENT AUTH LOGIC ---
@@ -91,46 +111,74 @@ const App: React.FC = () => {
       id: Date.now(),
       clients: [],
       totalVouchersSent: 0,
-      logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500',
+      logoUrl: (rest as any).logoUrl || 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500',
       paymentHistory: [{ id: Date.now().toString(), date: new Date(lastPaymentDate).toISOString() }],
     };
     setEstablishments(prev => [...prev, newEstablishment]);
-    setAuthPage('login');
+
+    const token = localStorage.getItem('token');
+    if (token) {
+      setLoggedInEstablishment(newEstablishment);
+      setCurrentView('establishmentApp');
+    } else {
+      setAuthPage('login');
+      setCurrentView('establishmentAuth');
+    }
   }, []);
 
-  const handleLogin = useCallback((username: string, passwordHash: string) => {
-    const found = establishments.find(e => e.username === username && e.passwordHash === passwordHash);
-    if (found) {
-      const lastPayment = getLatestPaymentDate(found.paymentHistory);
-      
-      if (!lastPayment) {
-        // No payment history, force to payment page
-        setLoggedInEstablishment(found);
-        setShowPaymentPage(true);
+  const handleLogin = useCallback(async (username: string, passwordHash: string) => {
+    // tenta logar via backend primeiro
+    try {
+      const resp = await apiLogin(username, passwordHash);
+      if (resp && resp.token) {
+        localStorage.setItem('token', resp.token);
+
+        const found = establishments.find(e => e.username === username);
+        if (found) {
+          setLoggedInEstablishment(found);
+          setCurrentView('establishmentApp');
+          return;
+        }
+
+        const placeholder: Establishment = {
+          id: Date.now(),
+          name: username,
+          address: '',
+          cpfCnpj: '',
+          phone: '',
+          email: '',
+          voucherMessage: '',
+          pointsForVoucher: 10,
+          paymentHistory: [],
+          logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500',
+          clients: [],
+          totalVouchersSent: 0,
+          username,
+          passwordHash
+        };
+        setEstablishments(prev => [...prev, placeholder]);
+        setLoggedInEstablishment(placeholder);
+        setCurrentView('establishmentApp');
         return;
       }
+    } catch (err) {
+      console.warn('Falha no login via API, tentando fallback local:', err);
+    }
 
-      const today = new Date();
-      const diffTime = Math.abs(today.getTime() - lastPayment.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays > 31) {
-        setLoggedInEstablishment(found);
-        setShowPaymentPage(true);
-      } else {
-        setLoggedInEstablishment(found);
-        setCurrentView('establishmentApp');
-      }
+    const foundLocal = establishments.find(e => e.username === username && e.passwordHash === passwordHash);
+    if (foundLocal) {
+      setLoggedInEstablishment(foundLocal);
+      setCurrentView('establishmentApp');
     } else {
-      alert("Usuário ou senha inválidos!");
+      alert('Usuário ou senha inválidos!');
     }
   }, [establishments]);
-  
+
   const handlePaymentSuccess = useCallback(() => {
     if (loggedInEstablishment) {
       const newPayment: Payment = { id: Date.now().toString(), date: new Date().toISOString() };
-      const updatedEstablishment = { 
-        ...loggedInEstablishment, 
+      const updatedEstablishment = {
+        ...loggedInEstablishment,
         paymentHistory: [...loggedInEstablishment.paymentHistory, newPayment]
       };
       setEstablishments(prev => prev.map(e => e.id === updatedEstablishment.id ? updatedEstablishment : e));
@@ -144,63 +192,63 @@ const App: React.FC = () => {
     setLoggedInEstablishment(null);
     setCurrentView('chooser');
     setCurrentPage('dashboard');
+    localStorage.removeItem('token');
   }, []);
-  
+
   // --- CLIENT & BUSINESS LOGIC (scoped to logged-in establishment) ---
   const updateLoggedInEstablishment = (updater: (e: Establishment) => Establishment) => {
-      if(!loggedInEstablishment) return;
-      const updated = updater(loggedInEstablishment);
-      setLoggedInEstablishment(updated);
-      setEstablishments(prev => prev.map(e => e.id === updated.id ? updated : e));
+    if (!loggedInEstablishment) return;
+    const updated = updater(loggedInEstablishment);
+    setLoggedInEstablishment(updated);
+    setEstablishments(prev => prev.map(e => e.id === updated.id ? updated : e));
   };
-  
+
   const addClient = useCallback((client: Omit<Client, 'id'>) => {
-    updateLoggedInEstablishment(e => ({...e, clients: [...e.clients, {...client, id: Date.now().toString()}]}));
+    updateLoggedInEstablishment(e => ({ ...e, clients: [...e.clients, { ...client, id: Date.now().toString() }] }));
     setCurrentPage('clients');
   }, [loggedInEstablishment]);
 
   const updateClient = useCallback((updatedClient: Client) => {
-    updateLoggedInEstablishment(e => ({...e, clients: e.clients.map(c => c.id === updatedClient.id ? updatedClient : c)}));
+    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.map(c => c.id === updatedClient.id ? updatedClient : c) }));
     setCurrentPage('clients');
   }, [loggedInEstablishment]);
-  
+
   const deleteClient = useCallback((clientId: string) => {
-    updateLoggedInEstablishment(e => ({...e, clients: e.clients.filter(c => c.id !== clientId)}));
+    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.filter(c => c.id !== clientId) }));
   }, [loggedInEstablishment]);
 
   const addPointsToClient = useCallback((clientId: string, pointsToAdd: number) => {
-    updateLoggedInEstablishment(e => ({...e, clients: e.clients.map(c => 
-      c.id === clientId 
-        ? { ...c, points: c.points + pointsToAdd, lastPointAddition: new Date() } 
+    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.map(c =>
+      c.id === clientId
+        ? { ...c, points: c.points + pointsToAdd, lastPointAddition: new Date() }
         : c
-    )}));
+    ) }));
     setCurrentPage('clients');
   }, [loggedInEstablishment]);
 
   const sendVoucher = useCallback((clientId: string) => {
-    if(!loggedInEstablishment) return;
+    if (!loggedInEstablishment) return;
     const client = loggedInEstablishment.clients.find(c => c.id === clientId);
     if (!client) return;
 
     updateLoggedInEstablishment(e => ({
-        ...e,
-        clients: e.clients.map(c => 
-            c.id === clientId 
-            ? { ...c, points: c.points - e.pointsForVoucher }
-            : c
-        ),
-        totalVouchersSent: e.totalVouchersSent + 1
+      ...e,
+      clients: e.clients.map(c =>
+        c.id === clientId
+          ? { ...c, points: c.points - e.pointsForVoucher }
+          : c
+      ),
+      totalVouchersSent: e.totalVouchersSent + 1
     }));
-    
+
     const messageTemplate = loggedInEstablishment.voucherMessage || "Parabéns, {cliente}! Você resgatou um voucher!";
     const message = messageTemplate.replace('{cliente}', client.name);
-    
-    alert(`Voucher enviado para ${client.name}!\n\nMensagem: "${message}"`);
 
+    alert(`Voucher enviado para ${client.name}!\n\nMensagem: "${message}"`);
   }, [loggedInEstablishment]);
 
   const handleLogoUrlChange = useCallback((newUrl: string) => {
-      updateLoggedInEstablishment(e => ({...e, logoUrl: newUrl}));
+    updateLoggedInEstablishment(e => ({ ...e, logoUrl: newUrl }));
   }, [loggedInEstablishment]);
 
   // --- PAGE RENDERING ---
@@ -225,63 +273,48 @@ const App: React.FC = () => {
         return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} />;
     }
   };
-  
+
   const renderSuperAdminPage = () => {
     switch (currentSuperAdminPage) {
-        case 'superDashboard':
-            return <SuperAdminDashboard establishments={establishments} />;
-        case 'manageEstablishments':
-            return <SuperAdminEstablishments establishments={establishments} onUpdate={updateEstablishmentFromAdmin} onDelete={deleteEstablishmentFromAdmin} />;
-        case 'themeSettings':
-            return <SuperAdminThemeSettings currentTheme={theme} onThemeChange={setTheme} />;
-        default:
-             return <SuperAdminDashboard establishments={establishments} />;
+      case 'superDashboard':
+        return <SuperAdminDashboard establishments={establishments} />;
+      case 'manageEstablishments':
+        return <SuperAdminEstablishments establishments={establishments} onUpdate={updateEstablishmentFromAdmin} onDelete={deleteEstablishmentFromAdmin} />;
+      case 'themeSettings':
+        return <SuperAdminThemeSettings currentTheme={theme} onThemeChange={setTheme} />;
+      default:
+        return <SuperAdminDashboard establishments={establishments} />;
     }
   };
 
   // --- MAIN RENDER ---
-  if (showPaymentPage) {
-      return <PaymentPage onPaymentSuccess={handlePaymentSuccess} />;
-  }
+  if (showPaymentPage) return <PaymentPage onPaymentSuccess={handlePaymentSuccess} />;
 
   switch (currentView) {
-      case 'chooser':
-          return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
-      
-      case 'establishmentAuth':
-          if (authPage === 'register') {
-              return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
-          }
-          return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} />;
-          
-      case 'superAdminAuth':
-          return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
-
-      case 'establishmentApp':
-          return (
-            <Layout currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout}>
-              {renderEstablishmentPage()}
-            </Layout>
-          );
-      
-      case 'superAdminApp':
-          return (
-            <SuperAdminLayout currentPage={currentSuperAdminPage} setCurrentPage={setCurrentSuperAdminPage} onLogout={handleSuperAdminLogout}>
-                {renderSuperAdminPage()}
-            </SuperAdminLayout>
-          );
-          
-      default:
-          return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+    case 'chooser':
+      return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+    case 'establishmentAuth':
+      if (authPage === 'register') {
+        return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
+      }
+      return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} />;
+    case 'superAdminAuth':
+      return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
+    case 'establishmentApp':
+      return (
+        <Layout currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout}>
+          {renderEstablishmentPage()}
+        </Layout>
+      );
+    case 'superAdminApp':
+      return (
+        <SuperAdminLayout currentPage={currentSuperAdminPage} setCurrentPage={setCurrentSuperAdminPage} onLogout={handleSuperAdminLogout}>
+          {renderSuperAdminPage()}
+        </SuperAdminLayout>
+      );
+    default:
+      return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
   }
-};
-
-// Helper to get the latest payment date
-export const getLatestPayment = (paymentHistory: Payment[]): Payment | null => {
-  if (!paymentHistory || paymentHistory.length === 0) {
-    return null;
-  }
-  return [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 };
 
 export default App;

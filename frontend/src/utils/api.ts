@@ -1,7 +1,7 @@
 // frontend/src/utils/api.ts
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
-type Json = any;
+export type Json = any;
 
 export async function postEstabelecimento(formData: FormData): Promise<Json> {
   try {
@@ -10,7 +10,6 @@ export async function postEstabelecimento(formData: FormData): Promise<Json> {
       body: formData
     });
     if (!res.ok) {
-      // tenta extrair json de erro, senão retorna statusText
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw err;
     }
