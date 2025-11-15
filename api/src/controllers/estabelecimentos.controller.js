@@ -4,7 +4,6 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 
 async function criarEstabelecimento(req, res) {
   try {
@@ -27,7 +26,7 @@ async function criarEstabelecimento(req, res) {
     if (!nomeUsuario) return res.status(400).json({ error: 'nomeUsuario é obrigatório' });
     if (!senha) return res.status(400).json({ error: 'senha é obrigatória' });
 
-    // checar duplicados por email e por nomeUsuario
+    // checar duplicados
     if (email) {
       const existente = await prisma.estabelecimento.findUnique({ where: { email } }).catch(() => null);
       if (existente) return res.status(409).json({ error: 'Email já cadastrado em outro estabelecimento' });
@@ -58,9 +57,7 @@ async function criarEstabelecimento(req, res) {
         const newName = `logo_estab_${estab.id}${ext || '.png'}`;
         const newPath = path.join(destDir, newName);
 
-        // mover/renomear o arquivo salvo pelo multer
         await fsp.rename(req.file.path, newPath).catch(async (err) => {
-          // se rename falhar (ex: cross-device), tentamos copiar e remover
           console.warn('[Estab] rename falhou, tentando copy:', err && err.message);
           await fsp.copyFile(req.file.path, newPath);
           await fsp.unlink(req.file.path).catch(() => {});
@@ -75,7 +72,6 @@ async function criarEstabelecimento(req, res) {
 
       } catch (errFile) {
         console.error('[Estab] erro ao processar logo:', errFile && errFile.stack ? errFile.stack : errFile);
-        // não quebramos a criação por causa do logo
       }
     }
 
@@ -100,7 +96,6 @@ async function criarEstabelecimento(req, res) {
 
   } catch (err) {
     console.error('[Estab] erro criarEstabelecimento:', err && err.stack ? err.stack : err);
-    // tratar códigos de erro comuns do Prisma
     if (err && (err.code === 'P2002' || err.code === 'ER_DUP_ENTRY')) {
       return res.status(409).json({ error: 'Dado duplicado (email ou nomeUsuario já cadastrado)' });
     }
@@ -108,4 +103,52 @@ async function criarEstabelecimento(req, res) {
   }
 }
 
-module.exports = { criarEstabelecimento };
+async function me(req, res) {
+  try {
+    const estabId = req.estabelecimentoId || (req.user && req.user.estabelecimentoId);
+    if (!estabId) return res.status(401).json({ error: 'Estabelecimento não encontrado no token' });
+
+    const estab = await prisma.estabelecimento.findUnique({
+      where: { id: Number(estabId) },
+      include: {
+        usuarios: {
+          select: {
+            id: true,
+            nomeUsuario: true,
+            papel: true,
+            criadoEm: true
+          }
+        },
+        cartoes: {
+          select: { id: true } // devolver só contagem mínima (evita payload grande)
+        }
+      }
+    });
+
+    if (!estab) return res.status(404).json({ error: 'Estabelecimento não encontrado' });
+
+    // opcional: contar cartoes / clientes / vouchers
+    const cartoesCount = await prisma.cartaoFidelidade.count({ where: { estabelecimentoId: Number(estabId) } });
+
+    return res.json({
+      estabelecimento: {
+        id: estab.id,
+        nome: estab.nome,
+        endereco: estab.endereco,
+        cpf_cnpj: estab.cpf_cnpj,
+        telefone: estab.telefone,
+        email: estab.email,
+        mensagem_voucher: estab.mensagem_voucher,
+        logo_path: estab.logo_path,
+        createdAt: estab.createdAt,
+        usuarios: estab.usuarios,
+        cartoesCount
+      }
+    });
+  } catch (err) {
+    console.error('[Estab] erro me():', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao buscar estabelecimento' });
+  }
+}
+
+module.exports = { criarEstabelecimento, me };

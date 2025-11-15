@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Establishment, Payment } from '../../types';
 import { TrashIcon, PencilIcon, ClipboardListIcon, DocumentTextIcon, PlusIcon } from '../icons/Icons';
-import { getLatestPayment } from '../../App';
 
 interface SuperAdminEstablishmentsProps {
   establishments: Establishment[];
@@ -22,14 +21,19 @@ const SuperAdminEstablishments: React.FC<SuperAdminEstablishmentsProps> = ({ est
       est.email?.toLowerCase().includes(searchTerm.toLowerCase())
     ), [establishments, searchTerm]);
     
-  const isSubscriptionActive = (paymentHistory: Payment[]) => {
-      const lastPayment = getLatestPayment(paymentHistory);
+    
+    const isSubscriptionActive = (paymentHistory: { id: string; date: string }[]) => {
+      if (!paymentHistory || paymentHistory.length === 0) return false;
+      // pega o pagamento mais recente pela data
+      const sorted = [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const lastPayment = sorted[0];
       if (!lastPayment) return false;
       const today = new Date();
       const diffTime = Math.abs(today.getTime() - new Date(lastPayment.date).getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays <= 31;
-  };
+    };
+
   
   const openEditModal = (establishment: Establishment) => {
     setEditingEstablishment(establishment);

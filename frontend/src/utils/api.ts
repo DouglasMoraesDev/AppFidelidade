@@ -1,72 +1,103 @@
 // frontend/src/utils/api.ts
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+// Utilitários simples de API usados pelo frontend.
+// Ajuste BASE_URL se seu backend estiver em outro host/porta.
 
-export type Json = any;
+const BASE = import.meta.env.VITE_API_BASE || '';
 
-export async function postEstabelecimento(formData: FormData): Promise<Json> {
-  try {
-    const res = await fetch(`${API_URL}/api/estabelecimentos`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw err;
-    }
-    return await res.json();
-  } catch (err) {
-    console.error('postEstabelecimento error', err);
-    throw err;
+async function request(path: string, opts: RequestInit = {}) {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: {
+      // adicione cabeçalhos comuns aqui, por ex Authorization se salvar token
+      ...(opts.headers || {})
+    },
+    ...opts
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    let json;
+    try { json = JSON.parse(txt); } catch { json = { message: txt }; }
+    throw json;
   }
+  // tenta json, fallback para text
+  const txt = await res.text();
+  try { return JSON.parse(txt); } catch { return txt; }
 }
 
-export async function login(nomeUsuario: string, senha: string): Promise<Json> {
-  const res = await fetch(`${API_URL}/api/auth/login`, {
+/** Autenticação */
+export async function login(username: string, password: string) {
+  return request('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nomeUsuario, senha })
+    body: JSON.stringify({ nomeUsuario: username, senha: password })
   });
-  return res.json();
 }
 
-export async function buscarPontosPublico(nome: string, telefone: string, estabId?: string): Promise<Json> {
-  const q = new URLSearchParams({ nome, telefone, estabId: estabId || '' });
-  const res = await fetch(`${API_URL}/api/clientes/buscar?${q.toString()}`);
-  return res.json();
-}
-
-export async function criarCliente(data: any, token: string): Promise<Json> {
-  const res = await fetch(`${API_URL}/api/clientes`, {
+/** Post estabelecimento (FormData) */
+export async function postEstabelecimento(formData: FormData) {
+  const res = await fetch(`${BASE}/api/estabelecimentos`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    try { throw JSON.parse(txt); } catch { throw { message: txt }; }
+  }
+  return res.json();
+}
+
+/** Clientes: criar e buscar */
+export async function createCliente(data: { nome: string; telefone: string; email?: string }) {
+  return request('/api/clientes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  return res.json();
+}
+export async function buscarClientes(qs: { nome?: string; telefone?: string }) {
+  const params = new URLSearchParams();
+  if (qs.nome) params.set('nome', qs.nome);
+  if (qs.telefone) params.set('telefone', qs.telefone);
+  return request(`/api/clientes/buscar?${params.toString()}`);
 }
 
-export async function criarCartao(payload: any, token: string): Promise<Json> {
-  const res = await fetch(`${API_URL}/api/cartoes`, {
+/** Cartões / Movimentos / Vouchers (simples) */
+export async function criarCartao(body: { clienteId: number; estabelecimentoId: number }) {
+  return request('/api/cartoes', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload)
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
   });
-  return res.json();
+}
+export async function criarMovimento(body: { cartaoId: number; tipo: string; pontos: number; descricao?: string }) {
+  return request('/api/movimentos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+export async function registrarVoucher(body: any) {
+  return request('/api/vouchers/registrar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+export async function confirmarVoucher(body: any) {
+  return request('/api/vouchers/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
 }
 
-export async function criarMovimento(payload: any, token: string): Promise<Json> {
-  const res = await fetch(`${API_URL}/api/movimentos`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload)
-  });
-  return res.json();
-}
-
-export async function confirmarVoucher(payload: any, token: string): Promise<Json> {
-  const res = await fetch(`${API_URL}/api/vouchers/confirm`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload)
-  });
-  return res.json();
-}
+/** Export default (opcional) */
+export default {
+  login,
+  postEstabelecimento,
+  createCliente,
+  buscarClientes,
+  criarCartao,
+  criarMovimento,
+  registrarVoucher,
+  confirmarVoucher
+};
