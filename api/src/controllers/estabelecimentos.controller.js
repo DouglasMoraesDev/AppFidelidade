@@ -4,14 +4,13 @@ const bcrypt = require('bcrypt');
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 async function criarEstabelecimento(req, res) {
   try {
-    // debug
-    console.log('=== criarEstabelecimento - req.body ===');
-    console.log(req.body);
-    console.log('=== criarEstabelecimento - req.file ===');
-    console.log(req.file);
+    console.log('[Estab] POST /api/estabelecimentos - inicio');
+    console.log('[Estab] body keys:', Object.keys(req.body || {}));
+    if (req.file) console.log('[Estab] arquivo recebido:', req.file.originalname, 'path:', req.file.path);
 
     const {
       nome,
@@ -24,12 +23,11 @@ async function criarEstabelecimento(req, res) {
       senha
     } = req.body;
 
-    // validações básicas
     if (!nome) return res.status(400).json({ error: 'nome é obrigatório' });
     if (!nomeUsuario) return res.status(400).json({ error: 'nomeUsuario é obrigatório' });
     if (!senha) return res.status(400).json({ error: 'senha é obrigatória' });
 
-    // checar duplicados
+    // checar duplicados por email e por nomeUsuario
     if (email) {
       const existente = await prisma.estabelecimento.findUnique({ where: { email } }).catch(() => null);
       if (existente) return res.status(409).json({ error: 'Email já cadastrado em outro estabelecimento' });
@@ -46,65 +44,66 @@ async function criarEstabelecimento(req, res) {
         cpf_cnpj: cpf_cnpj || null,
         telefone: telefone || null,
         email: email || null,
-        mensagem_voucher: mensagem_voucher || null
-        // logo_path será atualizado depois, se houver arquivo
+        mensagem_voucher: mensagem_voucher || null,
       }
     });
 
-    // Se vier arquivo de logo via multer, renomear para incluir extensão e id
+    // tratar logo (se houver)
     let logoPath = null;
     if (req.file) {
       try {
         const original = req.file.originalname || '';
         const ext = path.extname(original) || path.extname(req.file.path) || '';
-        // pasta onde multer salvou o arquivo
         const destDir = req.file.destination || path.dirname(req.file.path);
-        const newName = `logo_estab_${estab.id}${ext}`;
+        const newName = `logo_estab_${estab.id}${ext || '.png'}`;
         const newPath = path.join(destDir, newName);
 
-        // mover/renomear arquivo
-        await fsp.rename(req.file.path, newPath);
-        // guarda caminho relativo para servir arquivos estáticos (ajuste conforme sua rota estática)
+        // mover/renomear o arquivo salvo pelo multer
+        await fsp.rename(req.file.path, newPath).catch(async (err) => {
+          // se rename falhar (ex: cross-device), tentamos copiar e remover
+          console.warn('[Estab] rename falhou, tentando copy:', err && err.message);
+          await fsp.copyFile(req.file.path, newPath);
+          await fsp.unlink(req.file.path).catch(() => {});
+        });
+
         logoPath = `/img/${newName}`;
 
-        // atualiza registro do estabelecimento com logo_path
         await prisma.estabelecimento.update({
           where: { id: estab.id },
           data: { logo_path: logoPath }
         });
+
       } catch (errFile) {
-        console.error('Erro ao processar logo:', errFile);
-        // não interrompe a criação do estabelecimento; apenas informa que logo não foi salva
+        console.error('[Estab] erro ao processar logo:', errFile && errFile.stack ? errFile.stack : errFile);
+        // não quebramos a criação por causa do logo
       }
     }
 
-    // Criar usuário administrador vinculado ao estabelecimento
+    // criar usuário administrador
     const senhaHash = await bcrypt.hash(senha, 10);
     const usuario = await prisma.usuario.create({
       data: {
         estabelecimentoId: estab.id,
         nomeUsuario,
         senhaHash,
-        papel: 'administrador' // papel padrão para o primeiro usuário
+        papel: 'administrador'
       }
     });
 
-    // monta retorno (omitindo senhaHash)
     const result = {
       estabelecimento: { ...estab, logo_path: logoPath },
       usuario: { id: usuario.id, nomeUsuario: usuario.nomeUsuario }
     };
 
-    console.log('Estabelecimento criado com sucesso id=', estab.id);
+    console.log(`[Estab] criado id=${estab.id} usuarioId=${usuario.id}`);
     return res.status(201).json(result);
-  } catch (err) {
-    console.error('Erro criarEstabelecimento:', err);
 
-    // tratar erros de banco como duplicidade de unique
-    if (err && err.code && (err.code === 'P2002' || err.code === 'ER_DUP_ENTRY')) {
+  } catch (err) {
+    console.error('[Estab] erro criarEstabelecimento:', err && err.stack ? err.stack : err);
+    // tratar códigos de erro comuns do Prisma
+    if (err && (err.code === 'P2002' || err.code === 'ER_DUP_ENTRY')) {
       return res.status(409).json({ error: 'Dado duplicado (email ou nomeUsuario já cadastrado)' });
     }
-
     return res.status(500).json({ error: 'Erro interno ao criar estabelecimento' });
   }
 }

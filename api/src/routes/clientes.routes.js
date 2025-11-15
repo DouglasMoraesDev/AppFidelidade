@@ -1,9 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { listarClientes, criarCliente, buscarPorNomeTelefone } = require('../controllers/clientes.controller');
+const { criarCliente, buscar } = require('../controllers/clientes.controller');
 
-router.get('/', listarClientes);
 router.post('/', criarCliente);
-router.get('/buscar', buscarPorNomeTelefone);
+router.get('/buscar', buscar);
 
 module.exports = router;
