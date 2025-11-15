@@ -1,24 +1,22 @@
 // frontend/src/utils/api.ts
-// Utilitários simples de API usados pelo frontend.
-// Ajuste BASE_URL se seu backend estiver em outro host/porta.
 
-const BASE = import.meta.env.VITE_API_BASE || '';
+const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 
 async function request(path: string, opts: RequestInit = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: {
-      // adicione cabeçalhos comuns aqui, por ex Authorization se salvar token
       ...(opts.headers || {})
     },
     ...opts
   });
+
   if (!res.ok) {
     const txt = await res.text();
     let json;
     try { json = JSON.parse(txt); } catch { json = { message: txt }; }
     throw json;
   }
-  // tenta json, fallback para text
+
   const txt = await res.text();
   try { return JSON.parse(txt); } catch { return txt; }
 }
@@ -32,20 +30,22 @@ export async function login(username: string, password: string) {
   });
 }
 
-/** Post estabelecimento (FormData) */
+/** Criar estabelecimento (FormData) */
 export async function postEstabelecimento(formData: FormData) {
   const res = await fetch(`${BASE}/api/estabelecimentos`, {
     method: 'POST',
     body: formData
   });
+
   if (!res.ok) {
     const txt = await res.text();
     try { throw JSON.parse(txt); } catch { throw { message: txt }; }
   }
+
   return res.json();
 }
 
-/** Clientes: criar e buscar */
+/** Clientes */
 export async function createCliente(data: { nome: string; telefone: string; email?: string }) {
   return request('/api/clientes', {
     method: 'POST',
@@ -53,6 +53,7 @@ export async function createCliente(data: { nome: string; telefone: string; emai
     body: JSON.stringify(data)
   });
 }
+
 export async function buscarClientes(qs: { nome?: string; telefone?: string }) {
   const params = new URLSearchParams();
   if (qs.nome) params.set('nome', qs.nome);
@@ -60,7 +61,7 @@ export async function buscarClientes(qs: { nome?: string; telefone?: string }) {
   return request(`/api/clientes/buscar?${params.toString()}`);
 }
 
-/** Cartões / Movimentos / Vouchers (simples) */
+/** Cartões / Movimentos / Vouchers */
 export async function criarCartao(body: { clienteId: number; estabelecimentoId: number }) {
   return request('/api/cartoes', {
     method: 'POST',
@@ -68,6 +69,7 @@ export async function criarCartao(body: { clienteId: number; estabelecimentoId: 
     body: JSON.stringify(body)
   });
 }
+
 export async function criarMovimento(body: { cartaoId: number; tipo: string; pontos: number; descricao?: string }) {
   return request('/api/movimentos', {
     method: 'POST',
@@ -75,6 +77,7 @@ export async function criarMovimento(body: { cartaoId: number; tipo: string; pon
     body: JSON.stringify(body)
   });
 }
+
 export async function registrarVoucher(body: any) {
   return request('/api/vouchers/registrar', {
     method: 'POST',
@@ -82,6 +85,7 @@ export async function registrarVoucher(body: any) {
     body: JSON.stringify(body)
   });
 }
+
 export async function confirmarVoucher(body: any) {
   return request('/api/vouchers/confirm', {
     method: 'POST',
@@ -90,7 +94,6 @@ export async function confirmarVoucher(body: any) {
   });
 }
 
-/** Export default (opcional) */
 export default {
   login,
   postEstabelecimento,
