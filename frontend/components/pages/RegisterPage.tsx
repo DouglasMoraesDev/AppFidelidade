@@ -1,6 +1,5 @@
 // frontend/src/components/pages/RegisterPage.tsx
 import React, { useState } from 'react';
-import { Establishment } from '../../types';
 import {
   GiftIcon,
   BuildingOfficeIcon,
@@ -11,11 +10,23 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   StarIcon,
-  CalendarIcon
+  CalendarIcon,
+  PhotoIcon
 } from '../icons/Icons';
 import { postEstabelecimento, login as apiLogin } from '../../utils/api';
 
-type RegisterData = Omit<Establishment, 'id' | 'clients' | 'totalVouchersSent' | 'logoUrl' | 'paymentHistory'> & { lastPaymentDate: string };
+type RegisterData = {
+  name: string;
+  address?: string;
+  cpfCnpj?: string;
+  phone?: string;
+  email?: string;
+  voucherMessage?: string;
+  pointsForVoucher: number;
+  lastPaymentDate: string;
+  username: string;
+  password: string;
+};
 
 interface RegisterPageProps {
   onRegister: (establishment: RegisterData) => void;
@@ -33,22 +44,26 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     pointsForVoucher: 10,
     lastPaymentDate: new Date().toISOString().split('T')[0],
     username: '',
-    passwordHash: '',
+    password: '',
   });
+
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name) newErrors.name = 'Nome do estabelecimento é obrigatório.';
-    if (!formData.username) newErrors.username = 'Usuário de acesso é obrigatório.';
-    if (!formData.passwordHash) newErrors.passwordHash = 'Senha é obrigatória.';
-    if (formData.passwordHash.length < 6) newErrors.passwordHash = 'A senha deve ter no mínimo 6 caracteres.';
-    if (formData.passwordHash !== confirmPassword) newErrors.confirmPassword = 'As senhas não coincidem.';
-    if (formData.pointsForVoucher <= 0) newErrors.pointsForVoucher = 'O valor deve ser maior que zero.';
-    if (!formData.lastPaymentDate) newErrors.lastPaymentDate = 'A data é obrigatória.';
+    if (!formData.name.trim()) newErrors.name = 'Nome do estabelecimento é obrigatório.';
+    if (!formData.username.trim()) newErrors.username = 'Usuário de acesso é obrigatório.';
+    if (!formData.password) newErrors.password = 'Senha é obrigatória.';
+    if (formData.password && formData.password.length < 6) newErrors.password = 'A senha deve ter no mínimo 6 caracteres.';
+    if (formData.password !== confirmPassword) newErrors.confirmPassword = 'As senhas não coincidem.';
+    if (!formData.lastPaymentDate) newErrors.lastPaymentDate = 'A data do 1º pagamento é obrigatória.';
+    if (Number(formData.pointsForVoucher) <= 0) newErrors.pointsForVoucher = 'Pontos para voucher deve ser maior que zero.';
+    if (!logoFile) newErrors.logo = 'O logo é obrigatório.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -62,14 +77,28 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     setFormData(prev => ({ ...prev, pointsForVoucher: parseInt(e.target.value, 10) || 0 }));
   };
 
+  const handleLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+    setLogoFile(f);
+    if (f) {
+      const reader = new FileReader();
+      reader.onload = () => setLogoPreview(String(reader.result));
+      reader.readAsDataURL(f);
+    } else {
+      setLogoPreview(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMsg(null);
     if (!validate()) return;
 
+    if (!logoFile) return;
+
     setLoading(true);
     try {
-      // Monta FormData com os nomes que o backend espera
+      // monta FormData com os nomes que o backend espera
       const fd = new FormData();
       fd.append('nome', formData.name);
       fd.append('endereco', formData.address || '');
@@ -78,26 +107,33 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
       fd.append('email', formData.email || '');
       fd.append('mensagem_voucher', formData.voucherMessage || '');
       fd.append('nomeUsuario', formData.username);
-      fd.append('senha', formData.passwordHash);
+      fd.append('senha', formData.password);
 
+      fd.append('logo', logoFile as File);
+
+      // envia para backend
       const res = await postEstabelecimento(fd);
+
+      // res esperado: { estabelecimento: {...}, usuario: {...} } conforme seu backend
       const createdEstab = res && res.estabelecimento ? res.estabelecimento : null;
       if (!createdEstab) {
         setStatusMsg('Cadastro concluído, mas resposta inesperada do servidor.');
       } else {
-        setStatusMsg('Estabelecimento criado no servidor com sucesso.');
+        setStatusMsg('Estabelecimento criado com sucesso.');
 
-        // Tenta logar automaticamente (para obter token); se falhar, não bloqueia o fluxo
+        // tenta login automático (opcional)
         try {
-          const loginResp = await apiLogin(formData.username, formData.passwordHash);
+          const loginResp = await apiLogin(formData.username, formData.password);
           if (loginResp && loginResp.token) {
             localStorage.setItem('token', loginResp.token);
           }
         } catch (err) {
+          // não bloqueia fluxo caso login automático falhe
           console.warn('Login automático falhou após cadastro:', err);
         }
 
-        const registerPayload: RegisterData = {
+        // monta payload local (frontend) e chama callback para integrar à UI local
+        const payload: RegisterData = {
           name: createdEstab.nome || formData.name,
           address: createdEstab.endereco || formData.address,
           cpfCnpj: createdEstab.cpf_cnpj || formData.cpfCnpj,
@@ -107,16 +143,17 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
           pointsForVoucher: formData.pointsForVoucher,
           lastPaymentDate: formData.lastPaymentDate,
           username: formData.username,
-          passwordHash: formData.passwordHash,
+          password: formData.password,
         };
 
-        onRegister(registerPayload);
+        onRegister(payload);
       }
     } catch (err: any) {
       console.error('Erro ao cadastrar no backend:', err);
+      // tenta extrair mensagem estruturada
       const message =
-        (err && (err.error || err.message)) ||
-        'Erro desconhecido ao cadastrar. Verifique console e backend.';
+        (err && (err.error || err.message || (err?.error?.message))) ||
+        'Erro desconhecido ao cadastrar. Veja console / network.';
       setStatusMsg(String(message));
     } finally {
       setLoading(false);
@@ -133,7 +170,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
         </div>
 
         <div className="bg-surface p-8 rounded-xl shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <InputField id="name" label="Nome do Estabelecimento *" type="text" value={formData.name} onChange={handleChange} icon={<BuildingOfficeIcon className="h-5 w-5 text-on-surface-secondary" />} />
@@ -146,22 +183,22 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InputField id="phone" label="Telefone" type="tel" value={formData.phone} onChange={handleChange} icon={<PhoneIcon className="h-5 w-5 text-on-surface-secondary" />} />
-              <InputField id="email" label="E-mail" type="email" value={formData.email} onChange={handleChange} icon={<EnvelopeIcon className="h-5 w-5 text-on-surface-secondary" />} />
+              <InputField id="email" label="E-mail (opcional)" type="email" value={formData.email} onChange={handleChange} icon={<EnvelopeIcon className="h-5 w-5 text-on-surface-secondary" />} />
             </div>
 
             <div>
               <label htmlFor="voucherMessage" className="block text-sm font-medium text-on-surface-secondary mb-1">Mensagem Padrão do Voucher</label>
-              <textarea id="voucherMessage" value={formData.voucherMessage} onChange={handleChange} rows={2} className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition" />
-              <p className="text-xs text-on-surface-secondary mt-1">Use {'{cliente}'} para o nome.</p>
+              <textarea id="voucherMessage" value={formData.voucherMessage} onChange={(e) => setFormData(prev => ({ ...prev, voucherMessage: e.target.value }))} rows={2} className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition" />
+              <p className="text-xs text-on-surface-secondary mt-1">Use {'{cliente}'} para o nome do cliente.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <InputField id="pointsForVoucher" label="Pontos para Voucher *" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
+                <InputField id="pointsForVoucher" label="Pontos para Voucher * (apenas frontend)" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
                 {errors.pointsForVoucher && <p className="text-red-400 text-xs mt-1">{errors.pointsForVoucher}</p>}
               </div>
               <div>
-                <InputField id="lastPaymentDate" label="Data do 1º Pagamento *" type="date" value={formData.lastPaymentDate} onChange={handleChange} icon={<CalendarIcon className="h-5 w-5 text-on-surface-secondary" />} />
+                <InputField id="lastPaymentDate" label="Data do 1º Pagamento *" type="date" value={formData.lastPaymentDate} onChange={(e) => setFormData(prev => ({ ...prev, lastPaymentDate: e.target.value }))} icon={<CalendarIcon className="h-5 w-5 text-on-surface-secondary" />} />
                 {errors.lastPaymentDate && <p className="text-red-400 text-xs mt-1">{errors.lastPaymentDate}</p>}
               </div>
             </div>
@@ -175,13 +212,27 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <InputField id="passwordHash" label="Senha *" type="password" value={formData.passwordHash} onChange={handleChange} icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />} />
-                {errors.passwordHash && <p className="text-red-400 text-xs mt-1">{errors.passwordHash}</p>}
+                <InputField id="password" label="Senha *" type="password" value={formData.password} onChange={handleChange} icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />} />
+                {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
               </div>
               <div>
                 <InputField id="confirmPassword" label="Confirmar Senha *" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />} />
                 {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
               </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-on-surface-secondary mb-2">Logo do estabelecimento *</label>
+              <div className="flex items-center gap-4">
+                <label htmlFor="logo" className="cursor-pointer bg-primary text-white font-bold py-2 px-4 rounded-md hover:bg-primary-focus transition-colors flex items-center gap-2">
+                  <PhotoIcon className="h-5 w-5" />
+                  Escolher imagem
+                </label>
+                <input id="logo" type="file" accept="image/*" onChange={handleLogoFile} className="hidden" />
+                {logoPreview && <img src={logoPreview} alt="preview" className="w-14 h-14 rounded-md object-cover border" />}
+              </div>
+              <p className="text-xs text-on-surface-secondary mt-1">A imagem será usada como carimbo no cartão fidelidade.</p>
+              {errors.logo && <p className="text-red-400 text-xs mt-1">{errors.logo}</p>}
             </div>
 
             <button type="submit" disabled={loading} className="w-full bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300 !mt-6">
@@ -218,9 +269,16 @@ const InputField: React.FC<{
     <label htmlFor={id} className="block text-sm font-medium text-on-surface-secondary mb-1">{label}</label>
     <div className="relative">
       <span className="absolute inset-y-0 left-0 flex items-center pl-3">{icon}</span>
-      <input id={id} name={id} type={type} value={value as any} onChange={onChange as any}
+      <input
+        id={id}
+        name={id}
+        type={type}
+        value={value as any}
+        onChange={onChange as any}
         autoComplete={type === 'password' ? 'new-password' : undefined}
-        className="w-full bg-background text-on-surface p-3 pl-10 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition" {...props} />
+        className="w-full bg-background text-on-surface p-3 pl-10 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
+        {...props}
+      />
     </div>
   </div>
 );

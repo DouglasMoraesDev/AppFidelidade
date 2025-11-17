@@ -20,10 +20,21 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent }) => {
+interface DashboardProps {
+  clients: Client[];
+  totalVouchersSent: number;
+  voucherThreshold: number;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, voucherThreshold }) => {
   const recentPointAdditions = clients
     .filter(c => c.lastPointAddition && (new Date().getTime() - new Date(c.lastPointAddition).getTime()) < 24 * 60 * 60 * 1000)
     .sort((a, b) => new Date(b.lastPointAddition!).getTime() - new Date(a.lastPointAddition!).getTime());
+
+  const clientesComVoucher = clients.filter(c => c.points >= voucherThreshold);
+  const clienteTopVoucher = clientesComVoucher.length > 0 
+    ? clientesComVoucher.reduce((max, c) => c.points > max.points ? c : max, clientesComVoucher[0])
+    : null;
 
   return (
     <div className="space-y-8">
@@ -37,6 +48,23 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent }) => 
         <StatCard icon={<GiftIcon className="h-6 w-6 text-white"/>} title="Vouchers Enviados" value={totalVouchersSent} color="bg-green-500" />
         <StatCard icon={<ClockIcon className="h-6 w-6 text-white"/>} title="Atividade (24h)" value={recentPointAdditions.length} color="bg-yellow-500" />
       </div>
+
+      {clienteTopVoucher && (
+        <div className="bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary rounded-lg p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-on-surface mb-2">🏆 Cliente Destaque</h2>
+              <p className="text-lg font-semibold text-on-surface">{clienteTopVoucher.name}</p>
+              <p className="text-sm text-on-surface-secondary">{clienteTopVoucher.phone}</p>
+              <p className="text-2xl font-bold text-primary mt-2">{clienteTopVoucher.points} pontos</p>
+              <span className="inline-block mt-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-semibold">
+                Voucher Disponível! 🎁
+              </span>
+            </div>
+            <GiftIcon className="h-16 w-16 text-primary opacity-50" />
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="text-2xl font-bold text-on-surface mb-4">Pontos Adicionados Recentemente</h2>

@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { registrarVoucher, confirmarVoucher } = require('../controllers/vouchers.controller');
+const { enviarVoucher } = require('../controllers/vouchers.controller');
+const authMiddleware = require('../middlewares/auth.middleware');
 
-router.post('/registrar', registrarVoucher); // opcional: registra pendente
-router.post('/confirm', confirmarVoucher); // confirma e zera pontos
+router.post('/enviar', authMiddleware, enviarVoucher);
 
 module.exports = router;

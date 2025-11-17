@@ -1,5 +1,5 @@
-// frontend/src/App.tsx
-import React, { useState, useCallback, useEffect } from 'react';
+// frontend/App.tsx
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Client, Page, Establishment, SuperAdminPage, Theme, Payment } from './types';
 import Layout from './components/layout/Layout';
 import Dashboard from './components/pages/Dashboard';
@@ -18,30 +18,33 @@ import SuperAdminLayout from './components/layout/SuperAdminLayout';
 import SuperAdminDashboard from './components/pages/SuperAdminDashboard';
 import SuperAdminEstablishments from './components/pages/SuperAdminEstablishments';
 import SuperAdminThemeSettings from './components/pages/SuperAdminThemeSettings';
+import TelaPontosPublica from './src/components/TelaPontosPublica';
 
-import { login as apiLogin } from './utils/api';
+import {
+  login as apiLogin,
+  fetchSnapshot,
+  deletarCliente,
+  createCliente,
+  adicionarPontos,
+  enviarVoucher,
+  changePassword,
+  downloadBackup,
+  updateEstabelecimentoConfig,
+  uploadLogo,
+  confirmarMensalidade,
+  fetchOverview,
+  superAdminListEstablishments,
+  superAdminUpdateEstablishment,
+  superAdminDeleteEstablishment,
+  superAdminAddPayment
+} from './utils/api';
 
-const getLatestPaymentDate = (paymentHistory: Payment[]): Date | null => {
-  if (!paymentHistory || paymentHistory.length === 0) return null;
-  const sortedHistory = [...paymentHistory].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  return new Date(sortedHistory[0].date);
-};
-
-const STORAGE_KEY = 'establishments_v1';
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+const DEFAULT_LOGO = 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500';
+const SUPER_ADMIN_SECRET = 'Dooug#525210';
 
 const App: React.FC = () => {
-  // --- STATE MANAGEMENT ---
-  const [establishments, setEstablishments] = useState<Establishment[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw) as Establishment[];
-      return [];
-    } catch (err) {
-      console.warn('Erro ao ler establishments do localStorage', err);
-      return [];
-    }
-  });
-
+  const [establishments, setEstablishments] = useState<Establishment[]>([]);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [currentSuperAdminPage, setCurrentSuperAdminPage] = useState<SuperAdminPage>('superDashboard');
   const [theme, setTheme] = useState<Theme>({
@@ -53,14 +56,26 @@ const App: React.FC = () => {
     fontFamily: "'Inter', sans-serif",
   });
 
-  // Authentication & View State
   const [currentView, setCurrentView] = useState<'chooser' | 'establishmentAuth' | 'superAdminAuth' | 'establishmentApp' | 'superAdminApp'>('chooser');
   const [authPage, setAuthPage] = useState<'login' | 'register'>('login');
   const [loggedInEstablishment, setLoggedInEstablishment] = useState<Establishment | null>(null);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
+  const [mensalidadeExpirada, setMensalidadeExpirada] = useState(false);
+  const [publicSlug, setPublicSlug] = useState('');
+  const [publicLink, setPublicLink] = useState('');
+  const [superAdminMetrics, setSuperAdminMetrics] = useState<{ estabelecimentos: number; clientes: number; vouchers: number; inadimplentes: number } | null>(null);
+  const [superAdminSecret, setSuperAdminSecret] = useState<string | null>(null);
+  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
-  // Apply theme changes to CSS variables
+  const isPublicConsultaPage = useMemo(
+    () => {
+      if (typeof window === 'undefined') return false;
+      const path = window.location.pathname.toLowerCase();
+      return path.startsWith('/consulta/') || path.startsWith('/consultar');
+    },
+    []
+  );
+
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty('--color-primary', theme.primary);
@@ -71,122 +86,97 @@ const App: React.FC = () => {
     root.style.setProperty('--font-family', theme.fontFamily);
   }, [theme]);
 
-  // persist establishments to localStorage whenever mudarem
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(establishments));
-    } catch (err) {
-      console.warn('Erro ao salvar establishments no localStorage', err);
+  const mapApiClientToLocal = (apiClient: any): Client => ({
+    id: String(apiClient.id),
+    cartaoId: Number(apiClient.id),
+    clienteId: Number(apiClient.clienteId),
+    name: apiClient.name || apiClient.cliente?.nome || '',
+    phone: apiClient.phone || apiClient.cliente?.telefone || '',
+    points: apiClient.points ?? apiClient.pontos ?? 0,
+    lastPointAddition: apiClient.lastPointAddition || apiClient.movimentos?.[0]?.criadoEm || null
+  });
+
+  const mapSnapshotToEstablishment = (snapshot: any): Establishment => {
+    const paymentHistory: Payment[] = (snapshot.pagamentos || []).map((p: any) => ({
+      id: String(p.id),
+      date: p.pagoEm
+    }));
+
+    // Normaliza o link: converte formato antigo /consulta/{slug} para /consultar?slug={slug}
+    let shareLink = snapshot.estabelecimento?.link_consulta
+      || (typeof window !== 'undefined' ? `${window.location.origin}/consultar?slug=${snapshot.estabelecimento?.slug_publico}` : '');
+    
+    if (shareLink && typeof window !== 'undefined') {
+      // Se o link está no formato antigo /consulta/{slug}, converte para o novo formato
+      const oldFormatMatch = shareLink.match(/\/consulta\/([^\/\?]+)/);
+      if (oldFormatMatch && oldFormatMatch[1]) {
+        const slug = oldFormatMatch[1];
+        const origin = window.location.origin;
+        shareLink = `${origin}/consultar?slug=${slug}`;
+      }
+      // Garante que está usando a porta correta (3000)
+      shareLink = shareLink.replace(/localhost:5173/g, 'localhost:3000');
+      shareLink = shareLink.replace(/localhost:5174/g, 'localhost:3000');
     }
-  }, [establishments]);
 
-  // --- SUPER ADMIN LOGIC ---
-  const handleSuperAdminLogin = (user: string, pass: string) => {
-    if (user === 'Dooug' && pass === '525210') {
-      setIsSuperAdmin(true);
-      setCurrentView('superAdminApp');
-    } else {
-      alert('Credenciais de Super Admin inválidas!');
-    }
-  };
-
-  const updateEstablishmentFromAdmin = (updatedEstablishment: Establishment) => {
-    setEstablishments(prev => prev.map(e => e.id === updatedEstablishment.id ? updatedEstablishment : e));
-  };
-
-  const deleteEstablishmentFromAdmin = (establishmentId: number) => {
-    setEstablishments(prev => prev.filter(e => e.id !== establishmentId));
-  };
-
-  const handleSuperAdminLogout = () => {
-    setIsSuperAdmin(false);
-    setCurrentView('chooser');
-  };
-
-  // --- ESTABLISHMENT AUTH LOGIC ---
-  const handleRegister = useCallback((newEstablishmentData: Omit<Establishment, 'id' | 'clients' | 'totalVouchersSent' | 'logoUrl' | 'paymentHistory'> & { lastPaymentDate: string }) => {
-    const { lastPaymentDate, ...rest } = newEstablishmentData;
-    const newEstablishment: Establishment = {
-      ...rest,
-      id: Date.now(),
-      clients: [],
-      totalVouchersSent: 0,
-      logoUrl: (rest as any).logoUrl || 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500',
-      paymentHistory: [{ id: Date.now().toString(), date: new Date(lastPaymentDate).toISOString() }],
+    return {
+      id: snapshot.estabelecimento.id,
+      name: snapshot.estabelecimento.nome,
+      address: snapshot.estabelecimento.endereco || '',
+      cpfCnpj: snapshot.estabelecimento.cpf_cnpj || '',
+      phone: snapshot.estabelecimento.telefone || '',
+      email: snapshot.estabelecimento.email || '',
+      voucherMessage: snapshot.estabelecimento.mensagem_voucher || '',
+      pointsForVoucher: snapshot.estabelecimento.pontos_para_voucher || 10,
+      paymentHistory,
+      logoUrl: snapshot.estabelecimento.logo_path ? `${API_BASE}${snapshot.estabelecimento.logo_path}` : DEFAULT_LOGO,
+      clients: (snapshot.clientes || []).map(mapApiClientToLocal),
+      totalVouchersSent: snapshot.stats?.totalVouchers || 0,
+      username: '',
+      passwordHash: '',
+      slug: snapshot.estabelecimento.slug_publico,
+      publicLink: shareLink,
+      appDisplayName: snapshot.estabelecimento.nome_app || 'AppFidelidade'
     };
-    setEstablishments(prev => [...prev, newEstablishment]);
+  };
 
-    const token = localStorage.getItem('token');
-    if (token) {
-      setLoggedInEstablishment(newEstablishment);
-      setCurrentView('establishmentApp');
-    } else {
-      setAuthPage('login');
-      setCurrentView('establishmentAuth');
+  const refreshSnapshot = useCallback(async () => {
+    try {
+      setLoadingSnapshot(true);
+      const data = await fetchSnapshot();
+      const mapped = mapSnapshotToEstablishment(data);
+      setLoggedInEstablishment(mapped);
+      setEstablishments([mapped]);
+      setPublicSlug(mapped.slug || '');
+      setPublicLink(mapped.publicLink || '');
+
+      const validade = data.stats?.assinaturaValidaAte ? new Date(data.stats.assinaturaValidaAte) : null;
+      setMensalidadeExpirada(!validade || validade < new Date());
+    } catch (err) {
+      console.error('Erro ao atualizar snapshot', err);
+    } finally {
+      setLoadingSnapshot(false);
     }
   }, []);
 
-  const handleLogin = useCallback(async (username: string, passwordHash: string) => {
-    // tenta logar via backend primeiro
+  const handleRegister = useCallback(() => {
+    setAuthPage('login');
+    setCurrentView('establishmentAuth');
+  }, []);
+
+  const handleLogin = useCallback(async (username: string, password: string) => {
     try {
-      const resp = await apiLogin(username, passwordHash);
-      if (resp && resp.token) {
-        localStorage.setItem('token', resp.token);
-
-        const found = establishments.find(e => e.username === username);
-        if (found) {
-          setLoggedInEstablishment(found);
-          setCurrentView('establishmentApp');
-          return;
-        }
-
-        const placeholder: Establishment = {
-          id: Date.now(),
-          name: username,
-          address: '',
-          cpfCnpj: '',
-          phone: '',
-          email: '',
-          voucherMessage: '',
-          pointsForVoucher: 10,
-          paymentHistory: [],
-          logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500',
-          clients: [],
-          totalVouchersSent: 0,
-          username,
-          passwordHash
-        };
-        setEstablishments(prev => [...prev, placeholder]);
-        setLoggedInEstablishment(placeholder);
-        setCurrentView('establishmentApp');
-        return;
-      }
-    } catch (err) {
-      console.warn('Falha no login via API, tentando fallback local:', err);
-    }
-
-    const foundLocal = establishments.find(e => e.username === username && e.passwordHash === passwordHash);
-    if (foundLocal) {
-      setLoggedInEstablishment(foundLocal);
+      const resp = await apiLogin(username, password);
+      if (!resp?.token) throw new Error('Resposta inválida do servidor');
+      localStorage.setItem('token', resp.token);
+      setMensalidadeExpirada(!!resp.requiresPayment);
+      setShowPaymentPage(!!resp.requiresPayment);
+      await refreshSnapshot();
       setCurrentView('establishmentApp');
-    } else {
-      alert('Usuário ou senha inválidos!');
+    } catch (err: any) {
+      alert(err?.message || 'Não foi possível autenticar');
     }
-  }, [establishments]);
-
-  const handlePaymentSuccess = useCallback(() => {
-    if (loggedInEstablishment) {
-      const newPayment: Payment = { id: Date.now().toString(), date: new Date().toISOString() };
-      const updatedEstablishment = {
-        ...loggedInEstablishment,
-        paymentHistory: [...loggedInEstablishment.paymentHistory, newPayment]
-      };
-      setEstablishments(prev => prev.map(e => e.id === updatedEstablishment.id ? updatedEstablishment : e));
-      setLoggedInEstablishment(updatedEstablishment);
-      setShowPaymentPage(false);
-      setCurrentView('establishmentApp');
-    }
-  }, [loggedInEstablishment]);
+  }, [refreshSnapshot]);
 
   const handleLogout = useCallback(() => {
     setLoggedInEstablishment(null);
@@ -195,68 +185,288 @@ const App: React.FC = () => {
     localStorage.removeItem('token');
   }, []);
 
-  // --- CLIENT & BUSINESS LOGIC (scoped to logged-in establishment) ---
-  const updateLoggedInEstablishment = (updater: (e: Establishment) => Establishment) => {
-    if (!loggedInEstablishment) return;
-    const updated = updater(loggedInEstablishment);
-    setLoggedInEstablishment(updated);
-    setEstablishments(prev => prev.map(e => e.id === updated.id ? updated : e));
-  };
+  const handlePaymentSuccess = useCallback(async () => {
+    try {
+      await confirmarMensalidade();
+      setMensalidadeExpirada(false);
+      setShowPaymentPage(false);
+      await refreshSnapshot();
+      setCurrentView('establishmentApp');
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao registrar pagamento');
+    }
+  }, [refreshSnapshot]);
 
-  const addClient = useCallback((client: Omit<Client, 'id'>) => {
-    updateLoggedInEstablishment(e => ({ ...e, clients: [...e.clients, { ...client, id: Date.now().toString() }] }));
-    setCurrentPage('clients');
-  }, [loggedInEstablishment]);
+  const addClient = useCallback(async (client: { name: string; phone: string; points: number }) => {
+    try {
+      const resp = await createCliente({
+        nome: client.name,
+        telefone: client.phone,
+        pontosIniciais: client.points
+      });
+
+      if (!resp?.cliente) return;
+      const novoCliente = mapApiClientToLocal(resp.cliente);
+      setLoggedInEstablishment(prev => prev ? { ...prev, clients: [novoCliente, ...prev.clients] } : prev);
+      setCurrentPage('clients');
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao cadastrar cliente');
+    }
+  }, []);
 
   const updateClient = useCallback((updatedClient: Client) => {
-    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.map(c => c.id === updatedClient.id ? updatedClient : c) }));
-    setCurrentPage('clients');
+    setLoggedInEstablishment(prev => prev ? {
+      ...prev,
+      clients: prev.clients.map(c => c.id === updatedClient.id ? updatedClient : c)
+    } : prev);
+  }, []);
+
+  const deleteClient = useCallback(async (clientId: string) => {
+    const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
+    if (!client || !client.cartaoId) return;
+    
+    try {
+      await deletarCliente(client.cartaoId);
+      setLoggedInEstablishment(prev => prev ? {
+        ...prev,
+        clients: prev.clients.filter(c => c.id !== clientId)
+      } : prev);
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao deletar cliente');
+    }
   }, [loggedInEstablishment]);
 
-  const deleteClient = useCallback((clientId: string) => {
-    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.filter(c => c.id !== clientId) }));
-  }, [loggedInEstablishment]);
-
-  const addPointsToClient = useCallback((clientId: string, pointsToAdd: number) => {
-    updateLoggedInEstablishment(e => ({ ...e, clients: e.clients.map(c =>
-      c.id === clientId
-        ? { ...c, points: c.points + pointsToAdd, lastPointAddition: new Date() }
-        : c
-    ) }));
-    setCurrentPage('clients');
-  }, [loggedInEstablishment]);
-
-  const sendVoucher = useCallback((clientId: string) => {
-    if (!loggedInEstablishment) return;
-    const client = loggedInEstablishment.clients.find(c => c.id === clientId);
+  const addPointsToClient = useCallback(async (clientId: string, pointsToAdd: number) => {
+    const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
     if (!client) return;
-
-    updateLoggedInEstablishment(e => ({
-      ...e,
-      clients: e.clients.map(c =>
-        c.id === clientId
-          ? { ...c, points: c.points - e.pointsForVoucher }
-          : c
-      ),
-      totalVouchersSent: e.totalVouchersSent + 1
-    }));
-
-    const messageTemplate = loggedInEstablishment.voucherMessage || "Parabéns, {cliente}! Você resgatou um voucher!";
-    const message = messageTemplate.replace('{cliente}', client.name);
-
-    alert(`Voucher enviado para ${client.name}!\n\nMensagem: "${message}"`);
+    try {
+      const resp = await adicionarPontos({ cartaoId: client.cartaoId, pontos: pointsToAdd, descricao: 'Pontos adicionados' });
+      if (resp?.cartao) {
+        const atualizado = mapApiClientToLocal({
+          id: resp.cartao.id,
+          clienteId: resp.cartao.clienteId,
+          name: resp.cartao.cliente.nome,
+          phone: resp.cartao.cliente.telefone,
+          points: resp.cartao.pontos,
+          lastPointAddition: resp.cartao.movimentos?.[0]?.criadoEm
+        });
+        setLoggedInEstablishment(prev => prev ? {
+          ...prev,
+          clients: prev.clients.map(c => c.id === atualizado.id ? atualizado : c)
+        } : prev);
+      }
+      setCurrentPage('clients');
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao adicionar pontos');
+    }
   }, [loggedInEstablishment]);
 
-  const handleLogoUrlChange = useCallback((newUrl: string) => {
-    updateLoggedInEstablishment(e => ({ ...e, logoUrl: newUrl }));
+  const sendVoucher = useCallback(async (clientId: string) => {
+    const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
+    if (!client || !client.cartaoId) {
+      alert('Cliente não encontrado ou sem cartão cadastrado');
+      return;
+    }
+    try {
+      const resp = await enviarVoucher({ cartaoId: Number(client.cartaoId) });
+      if (resp?.cartao) {
+        const atualizado = mapApiClientToLocal({
+          id: resp.cartao.id,
+          clienteId: resp.cartao.clienteId,
+          name: resp.cartao.cliente.nome,
+          phone: resp.cartao.cliente.telefone,
+          points: resp.cartao.pontos,
+          lastPointAddition: resp.cartao.movimentos?.[0]?.criadoEm
+        });
+        setLoggedInEstablishment(prev => prev ? {
+          ...prev,
+          clients: prev.clients.map(c => c.id === atualizado.id ? atualizado : c),
+          totalVouchersSent: prev.totalVouchersSent + 1
+        } : prev);
+      }
+
+      if (resp?.whatsapp) {
+        const numeroLimpo = String(resp.whatsapp.numero || '').replace(/\D/g, '');
+        const numero = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+        const url = `https://wa.me/${numero}?text=${encodeURIComponent(resp.whatsapp.mensagem)}`;
+        window.open(url, '_blank');
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao enviar voucher');
+    }
   }, [loggedInEstablishment]);
 
-  // --- PAGE RENDERING ---
+  const handleLogoUpload = useCallback(async (file: File) => {
+    try {
+      const resp = await uploadLogo(file);
+      const logo = resp?.estabelecimento?.logo_path ? `${API_BASE}${resp.estabelecimento.logo_path}` : DEFAULT_LOGO;
+      setLoggedInEstablishment(prev => prev ? { ...prev, logoUrl: logo } : prev);
+    } catch (err: any) {
+      alert(err?.message || 'Não foi possível atualizar o logo');
+    }
+  }, []);
+
+  const handleConfigUpdate = useCallback(async (data: { mensagem_voucher?: string; nome_app?: string; link_consulta?: string; pontos_para_voucher?: number }) => {
+    try {
+      const resp = await updateEstabelecimentoConfig(data);
+      if (resp?.estabelecimento) {
+        setLoggedInEstablishment(prev => prev ? {
+          ...prev,
+          voucherMessage: resp.estabelecimento.mensagem_voucher ?? prev.voucherMessage,
+          pointsForVoucher: resp.estabelecimento.pontos_para_voucher ?? prev.pointsForVoucher,
+          appDisplayName: resp.estabelecimento.nome_app ?? prev.appDisplayName,
+          publicLink: resp.estabelecimento.link_consulta || prev.publicLink
+        } : prev);
+        if (resp.estabelecimento.link_consulta) {
+          setPublicLink(resp.estabelecimento.link_consulta);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao salvar configurações');
+    }
+  }, []);
+
+  const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    try {
+      await changePassword({ senhaAtual: currentPassword, novaSenha: newPassword });
+      alert('Senha alterada com sucesso!');
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao trocar senha');
+    }
+  }, []);
+
+  const handleBackupDownload = useCallback(async () => {
+    try {
+      const data = await downloadBackup();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup-estab-${loggedInEstablishment?.id || 'dados'}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao gerar backup');
+    }
+  }, [loggedInEstablishment]);
+
+  const handleMensalidadeCheck = useCallback(async () => {
+    await handlePaymentSuccess();
+  }, [handlePaymentSuccess]);
+
+  const handleSuperAdminLogin = useCallback(async (user: string, pass: string) => {
+    if (user !== 'Dooug' || pass !== '525210') {
+      alert('Credenciais de Super Admin inválidas!');
+      return;
+    }
+    try {
+      const [metrics, list] = await Promise.all([
+        fetchOverview(),
+        superAdminListEstablishments(SUPER_ADMIN_SECRET)
+      ]);
+
+      const mappedEstabs: Establishment[] = (list.estabelecimentos || []).map((est: any) => ({
+        id: est.id,
+        name: est.name,
+        address: '',
+        cpfCnpj: '',
+        phone: est.phone || '',
+        email: est.email || '',
+        voucherMessage: est.voucherMessage || '',
+        pointsForVoucher: est.pointsForVoucher || 10,
+        paymentHistory: (est.paymentHistory || []).map((p: any) => ({ id: String(p.id), date: p.date })),
+        logoUrl: est.logo_path ? `${API_BASE}${est.logo_path}` : DEFAULT_LOGO,
+        clients: Array.from({ length: est.clientsCount || 0 }).map((_, idx) => ({
+          id: `${est.id}-client-${idx}`,
+          cartaoId: idx,
+          clienteId: idx,
+          name: '',
+          phone: '',
+          points: 0
+        })),
+        totalVouchersSent: est.vouchersEnviados || 0,
+        username: '',
+        passwordHash: '',
+        slug: '',
+        publicLink: '',
+        appDisplayName: 'AppFidelidade'
+      }));
+
+      setSuperAdminMetrics(metrics);
+      setEstablishments(mappedEstabs);
+      setSuperAdminSecret(SUPER_ADMIN_SECRET);
+      setCurrentView('superAdminApp');
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao carregar dados do super admin');
+    }
+  }, []);
+
+  const handleSuperAdminUpdate = useCallback(async (est: Establishment) => {
+    if (!superAdminSecret) return;
+    try {
+      const resp = await superAdminUpdateEstablishment(superAdminSecret, est.id, {
+        name: est.name,
+        email: est.email,
+        phone: est.phone,
+        voucherMessage: est.voucherMessage,
+        pointsForVoucher: est.pointsForVoucher
+      });
+      if (resp?.estabelecimento) {
+        const updated = resp.estabelecimento;
+        setEstablishments(prev => prev.map(item => item.id === updated.id ? {
+          ...item,
+          name: updated.name,
+          email: updated.email,
+          phone: updated.phone,
+          voucherMessage: updated.voucherMessage,
+          pointsForVoucher: updated.pointsForVoucher,
+          paymentHistory: (updated.paymentHistory || []).map((p: any) => ({ id: String(p.id), date: p.date })),
+        } : item));
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao atualizar estabelecimento');
+    }
+  }, [superAdminSecret]);
+
+  const handleSuperAdminDelete = useCallback(async (id: number) => {
+    if (!superAdminSecret) return;
+    if (!window.confirm('Deseja realmente remover este estabelecimento?')) return;
+    try {
+      await superAdminDeleteEstablishment(superAdminSecret, id);
+      setEstablishments(prev => prev.filter(est => est.id !== id));
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao remover estabelecimento');
+    }
+  }, [superAdminSecret]);
+
+  const handleSuperAdminAddPayment = useCallback(async (id: number, date?: string) => {
+    if (!superAdminSecret) return;
+    try {
+      const resp = await superAdminAddPayment(superAdminSecret, id, date);
+      if (resp?.estabelecimento) {
+        const updated = resp.estabelecimento;
+        setEstablishments(prev => prev.map(item => item.id === updated.id ? {
+          ...item,
+          paymentHistory: (updated.paymentHistory || []).map((p: any) => ({ id: String(p.id), date: p.date })),
+        } : item));
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao registrar pagamento');
+    }
+  }, [superAdminSecret]);
+
+  const handleSuperAdminLogout = useCallback(() => {
+    setCurrentView('chooser');
+    setSuperAdminSecret(null);
+    setSuperAdminMetrics(null);
+    setEstablishments([]);
+  }, []);
+
   const renderEstablishmentPage = () => {
     if (!loggedInEstablishment) return null;
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} />;
+        return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} voucherThreshold={loggedInEstablishment.pointsForVoucher} />;
       case 'clients':
         return <ClientList clients={loggedInEstablishment.clients} onEdit={updateClient} onDelete={deleteClient} />;
       case 'addClient':
@@ -266,9 +476,30 @@ const App: React.FC = () => {
       case 'notifications':
         return <Notifications clients={loggedInEstablishment.clients} onSendVoucher={sendVoucher} voucherThreshold={loggedInEstablishment.pointsForVoucher} />;
       case 'settings':
-        return <Settings logoUrl={loggedInEstablishment.logoUrl} onLogoUrlChange={handleLogoUrlChange} onLogout={handleLogout} />;
+        return (
+          <Settings
+            logoUrl={loggedInEstablishment.logoUrl}
+            appName={loggedInEstablishment.appDisplayName || 'AppFidelidade'}
+            voucherMessage={loggedInEstablishment.voucherMessage || ''}
+            publicLink={publicLink}
+            slug={publicSlug}
+            onLogoUpload={handleLogoUpload}
+            onConfigSave={handleConfigUpdate}
+            onPasswordChange={handleChangePassword}
+            onDownloadBackup={handleBackupDownload}
+            onMensalidadeCheck={handleMensalidadeCheck}
+            mensalidadeExpirada={mensalidadeExpirada}
+            onLogout={handleLogout}
+          />
+        );
       case 'pointsLink':
-        return <PointsLink clients={loggedInEstablishment.clients} logoUrl={loggedInEstablishment.logoUrl} voucherThreshold={loggedInEstablishment.pointsForVoucher} />;
+        return (
+          <PointsLink
+            shareLink={publicLink}
+            slug={publicSlug}
+            logoUrl={loggedInEstablishment.logoUrl}
+          />
+        );
       default:
         return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} />;
     }
@@ -277,18 +508,30 @@ const App: React.FC = () => {
   const renderSuperAdminPage = () => {
     switch (currentSuperAdminPage) {
       case 'superDashboard':
-        return <SuperAdminDashboard establishments={establishments} />;
+        return <SuperAdminDashboard establishments={establishments} metrics={superAdminMetrics} />;
       case 'manageEstablishments':
-        return <SuperAdminEstablishments establishments={establishments} onUpdate={updateEstablishmentFromAdmin} onDelete={deleteEstablishmentFromAdmin} />;
+        return (
+          <SuperAdminEstablishments
+            establishments={establishments}
+            onUpdate={handleSuperAdminUpdate}
+            onDelete={handleSuperAdminDelete}
+            onAddPayment={handleSuperAdminAddPayment}
+          />
+        );
       case 'themeSettings':
         return <SuperAdminThemeSettings currentTheme={theme} onThemeChange={setTheme} />;
       default:
-        return <SuperAdminDashboard establishments={establishments} />;
+        return <SuperAdminDashboard establishments={establishments} metrics={superAdminMetrics} />;
     }
   };
 
-  // --- MAIN RENDER ---
-  if (showPaymentPage) return <PaymentPage onPaymentSuccess={handlePaymentSuccess} />;
+  if (isPublicConsultaPage) {
+    return <TelaPontosPublica />;
+  }
+
+  if (showPaymentPage) {
+    return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;
+  }
 
   switch (currentView) {
     case 'chooser':
@@ -297,10 +540,13 @@ const App: React.FC = () => {
       if (authPage === 'register') {
         return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
       }
-      return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} />;
+      return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} loading={loadingSnapshot} />;
     case 'superAdminAuth':
       return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
     case 'establishmentApp':
+      if (!loggedInEstablishment) {
+        return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;
+      }
       return (
         <Layout currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout}>
           {renderEstablishmentPage()}

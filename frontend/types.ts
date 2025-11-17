@@ -1,9 +1,11 @@
 export interface Client {
-  id: string;
+  id: string; // cartaoId em string para compatibilidade
+  cartaoId: number;
+  clienteId: number;
   name: string;
   phone: string;
   points: number;
-  lastPointAddition?: Date;
+  lastPointAddition?: string | Date | null;
 }
 
 export type Page = 'dashboard' | 'addClient' | 'addPoints' | 'clients' | 'notifications' | 'settings' | 'pointsLink';
@@ -39,4 +41,7 @@ export interface Establishment {
   // Auth fields
   username: string;
   passwordHash: string;
+  slug?: string;
+  publicLink?: string;
+  appDisplayName?: string;
 }

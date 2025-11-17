@@ -10,28 +10,74 @@ async function login(req, res) {
     const { nomeUsuario, senha } = req.body;
     if (!nomeUsuario || !senha) return res.status(400).json({ error: 'nomeUsuario e senha são obrigatórios' });
 
-    console.log(`[Auth] login request for usuario="${nomeUsuario}"`);
-
     const user = await prisma.usuario.findFirst({ where: { nomeUsuario } });
-    if (!user) {
-      console.warn(`[Auth] usuário não encontrado: ${nomeUsuario}`);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
-    }
+    if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
     const match = await bcrypt.compare(senha, user.senhaHash);
-    if (!match) {
-      console.warn(`[Auth] senha inválida para usuário: ${nomeUsuario}`);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (!match) return res.status(401).json({ error: 'Credenciais inválidas' });
+
+    const estabelecimento = await prisma.estabelecimento.findUnique({
+      where: { id: user.estabelecimentoId },
+      select: {
+        id: true,
+        nome: true,
+        logo_path: true,
+        mensagem_voucher: true,
+        pontos_para_voucher: true,
+        assinaturaValidaAte: true,
+        nome_app: true,
+        slug_publico: true,
+        link_consulta: true
+      }
+    });
+
+    if (!estabelecimento) {
+      return res.status(404).json({ error: 'Estabelecimento vinculado não encontrado' });
     }
 
-    const token = jwt.sign({ userId: user.id, estabelecimentoId: user.estabelecimentoId }, JWT_SECRET, { expiresIn: '8h' });
-    console.log(`[Auth] usuário autenticado id=${user.id} estab=${user.estabelecimentoId}`);
+    const assinaturaValida = estabelecimento.assinaturaValidaAte
+      ? new Date(estabelecimento.assinaturaValidaAte) > new Date()
+      : false;
 
-    return res.json({ token, usuario: { id: user.id, nomeUsuario: user.nomeUsuario } });
+    const token = jwt.sign({ userId: user.id, estabelecimentoId: user.estabelecimentoId }, JWT_SECRET, { expiresIn: '8h' });
+
+    return res.json({
+      token,
+      usuario: { id: user.id, nomeUsuario: user.nomeUsuario },
+      estabelecimento,
+      requiresPayment: !assinaturaValida
+    });
   } catch (err) {
     console.error('[Auth] Erro no login:', err && err.stack ? err.stack : err);
     return res.status(500).json({ error: 'Erro interno no login' });
   }
 }
 
-module.exports = { login };
+async function alterarSenha(req, res) {
+  try {
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ error: 'Usuário não autenticado' });
+
+    const { senhaAtual, novaSenha } = req.body;
+    if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'senhaAtual e novaSenha são obrigatórios' });
+
+    const usuario = await prisma.usuario.findUnique({ where: { id: Number(userId) } });
+    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    const confere = await bcrypt.compare(senhaAtual, usuario.senhaHash);
+    if (!confere) return res.status(401).json({ error: 'Senha atual inválida' });
+
+    const hash = await bcrypt.hash(novaSenha, 10);
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { senhaHash: hash }
+    });
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('[Auth] erro alterarSenha:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao alterar senha' });
+  }
+}
+
+module.exports = { login, alterarSenha };

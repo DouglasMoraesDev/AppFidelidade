@@ -1,160 +1,89 @@
-// frontend/src/components/pages/PointsLink.tsx
-import React, { useState } from 'react';
-import { Client } from '../../types';
-import { SearchIcon } from '../icons/Icons';
+import React from 'react';
+import { QrCodeIcon, ClipboardDocumentIcon } from '../icons/Icons';
 
 interface PointsLinkProps {
-  clients: Client[];
+  shareLink: string;
+  slug?: string;
   logoUrl: string;
-  voucherThreshold: number;
 }
 
-const PointsLink: React.FC<PointsLinkProps> = ({ clients, logoUrl, voucherThreshold }) => {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  // undefined = ainda não pesquisou, null = pesquisou e não encontrou, Client = encontrado
-  const [searchedClient, setSearchedClient] = useState<Client | null | undefined>(undefined);
+const PointsLink: React.FC<PointsLinkProps> = ({ shareLink, slug, logoUrl }) => {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(shareLink)}`;
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanedName = name.trim().toLowerCase();
-    const cleanedPhone = phone.trim();
-    const foundClient = clients.find(c =>
-      c.name.trim().toLowerCase() === cleanedName &&
-      c.phone.trim() === cleanedPhone
-    );
-    setSearchedClient(foundClient ?? null);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      alert('Link copiado!');
+    } catch {
+      alert('Não foi possível copiar agora.');
+    }
   };
-
-  // define quantas "carimbos" mostrar: pelo menos o voucherThreshold, pelo menos 10 como fallback
-  const totalStamps = Math.max(voucherThreshold, searchedClient?.points ?? 0, 10);
-
-  const Stamp: React.FC<{ filled: boolean }> = ({ filled }) => (
-    <div
-      role="img"
-      aria-label={filled ? 'Carimbo preenchido' : 'Carimbo vazio'}
-      className={`w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 border-dashed flex items-center justify-center transition-all duration-300 ${
-        filled ? 'bg-primary/20 border-primary' : 'border-slate-500'
-      }`}
-    >
-      {filled && (
-        <img
-          src={logoUrl}
-          alt="Logo do estabelecimento"
-          className="w-8 h-8 sm:w-10 sm:h-10 opacity-80"
-        />
-      )}
-    </div>
-  );
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-on-surface mb-2">Consulte Seus Pontos</h1>
-        <p className="text-on-surface-secondary">Informe seu nome e número para ver seu cartão fidelidade.</p>
+        <h1 className="text-3xl font-bold text-on-surface mb-2">Link Público de Pontos</h1>
+        <p className="text-on-surface-secondary">Compartilhe com seus clientes para que consultem os pontos sozinhos.</p>
       </div>
 
-      <div className="max-w-md mx-auto bg-surface p-8 rounded-lg shadow-lg">
-        {searchedClient === undefined && (
-          <form onSubmit={handleSearch} className="space-y-6" aria-label="Formulário de busca de pontos">
-            <div>
-              <label htmlFor="customer-name" className="block text-sm font-medium text-on-surface-secondary mb-1">
-                Seu Nome
-              </label>
-              <input
-                id="customer-name"
-                name="customer-name"
-                type="text"
-                className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                required
-                autoComplete="name"
-              />
-            </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="bg-surface p-6 rounded-lg shadow-lg space-y-4">
+          <h2 className="text-lg font-semibold text-on-surface flex items-center gap-2">
+            <QrCodeIcon className="w-6 h-6 text-primary" />
+            QR Code pronto para impressão
+          </h2>
+          <div className="bg-background/80 p-4 rounded-lg flex flex-col items-center gap-4">
+            <img src={qrUrl} alt="QR Code para consulta de pontos" className="w-64 h-64 bg-white p-3 rounded-lg" />
+            <p className="text-sm text-on-surface-secondary text-center">Baixe este QR Code e cole no balcão ou menu digital.</p>
+          </div>
+        </div>
 
-            <div>
-              <label htmlFor="customer-phone" className="block text-sm font-medium text-on-surface-secondary mb-1">
-                Seu Número (Telefone)
-              </label>
-              <input
-                id="customer-phone"
-                name="customer-phone"
-                type="tel"
-                className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                required
-                autoComplete="tel"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300"
-            >
-              <SearchIcon className="w-5 h-5" />
-              Buscar
-            </button>
-          </form>
-        )}
-
-        {searchedClient && (
-          <div className="text-center animate-fade-in">
-            <h2 className="text-2xl font-bold text-on-surface mb-2">{searchedClient.name}</h2>
-            <p className="text-on-surface-secondary mb-6">
-              Você tem <span className="font-bold text-primary text-xl">{searchedClient.points}</span> pontos!
-            </p>
-
-            <div className="bg-background/50 p-4 sm:p-6 rounded-lg">
-              <h3 className="font-semibold mb-4">Seu Cartão Fidelidade</h3>
-
-              <div
-                className="grid gap-2 sm:gap-4 justify-items-center"
-                // ajustar colunas dinamicamente com base no número de stamps (máx 10 por linha para responsividade)
-                style={{
-                  gridTemplateColumns: `repeat(${Math.min(totalStamps, 10)}, minmax(0, 1fr))`,
-                }}
-              >
-                {Array.from({ length: totalStamps }).map((_, i) => (
-                  <Stamp key={i} filled={i < searchedClient.points} />
-                ))}
+        <div className="bg-surface p-6 rounded-lg shadow-lg space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-on-surface mb-2">Link de Consulta Pública</h2>
+            <div className="bg-background/60 p-4 rounded-lg border border-slate-700 space-y-3">
+              <p className="text-sm text-on-surface-secondary">Compartilhe este link com seus clientes para que eles consultem seus pontos:</p>
+              <div className="flex items-center gap-2">
+                <input 
+                  value={shareLink} 
+                  readOnly 
+                  className="flex-1 bg-background text-on-surface text-sm p-2 rounded-md border border-slate-700 font-mono" 
+                />
+                <button 
+                  onClick={handleCopy} 
+                  className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-md text-sm hover:bg-primary-focus transition"
+                >
+                  <ClipboardDocumentIcon className="w-4 h-4" />
+                  Copiar
+                </button>
               </div>
-
-              <p className="text-xs text-on-surface-secondary mt-4">
-                Junte {voucherThreshold} pontos para ganhar um brinde!
-              </p>
+              {slug && (
+                <div className="pt-2 border-t border-slate-700">
+                  <p className="text-xs text-on-surface-secondary mb-1">Slug público:</p>
+                  <p className="text-sm font-mono text-primary bg-background p-2 rounded border border-slate-700">{slug}</p>
+                </div>
+              )}
+              <div className="pt-2 border-t border-slate-700">
+                <p className="text-xs text-on-surface-secondary">
+                  <strong className="text-on-surface">Como usar:</strong> Os clientes acessam este link, informam nome e telefone, e visualizam seus pontos e carimbos.
+                </p>
+              </div>
             </div>
-
-            <button
-              onClick={() => {
-                setSearchedClient(undefined);
-                setName('');
-                setPhone('');
-              }}
-              className="mt-6 w-full text-sm text-on-surface-secondary hover:text-on-surface"
-            >
-              Buscar outro cliente
-            </button>
           </div>
-        )}
 
-        {searchedClient === null && (
-          <div className="text-center animate-fade-in">
-            <p className="text-red-400 font-semibold">Cliente não encontrado.</p>
-            <p className="text-on-surface-secondary mt-2">Por favor, verifique os dados e tente novamente.</p>
-            <button
-              onClick={() => {
-                setSearchedClient(undefined);
-                setName('');
-                setPhone('');
-              }}
-              className="mt-6 w-full text-sm text-primary hover:underline"
-            >
-              Tentar Novamente
-            </button>
+          <div className="border-t border-slate-700 pt-4 space-y-3">
+            <p className="text-sm text-on-surface-secondary">Dica: inclua esta chamada nas redes sociais</p>
+            <div className="bg-background/50 p-4 rounded-lg text-sm text-on-surface-secondary leading-relaxed">
+              <p>1. Abra o aplicativo AppFidelidade.</p>
+              <p>2. Escaneie o QR Code ou acesse o link.</p>
+              <p>3. Consulte seus pontos e acompanhe os carimbos.</p>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-on-surface-secondary pt-2 border-t border-slate-700">
+              <img src={logoUrl} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-slate-600" />
+              <span>O logo cadastrado será usado como carimbo no cartão digital.</span>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

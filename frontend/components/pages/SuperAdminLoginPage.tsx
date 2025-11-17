@@ -25,7 +25,7 @@ const SuperAdminLoginPage: React.FC<SuperAdminLoginPageProps> = ({ onLogin, onNa
                 </div>
 
                 <div className="bg-surface p-8 rounded-xl shadow-2xl">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-on-surface-secondary mb-1">Usuário Admin</label>
                             <div className="relative">
@@ -39,7 +39,7 @@ const SuperAdminLoginPage: React.FC<SuperAdminLoginPageProps> = ({ onLogin, onNa
                                     value={username}
                                     onChange={e => setUsername(e.target.value)}
                                     required
-                                    placeholder="Dooug"
+                                    autoComplete="off"
                                 />
                             </div>
                         </div>
@@ -56,7 +56,7 @@ const SuperAdminLoginPage: React.FC<SuperAdminLoginPageProps> = ({ onLogin, onNa
                                     value={password}
                                     onChange={e => setPassword(e.target.value)}
                                     required
-                                    placeholder="525210"
+                                    autoComplete="off"
                                 />
                             </div>
                         </div>

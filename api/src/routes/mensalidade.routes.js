@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { criarMovimento } = require('../controllers/movimentos.controller');
+const { confirmarMensalidade } = require('../controllers/mensalidade.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 
-router.post('/', authMiddleware, criarMovimento);
+router.post('/confirmar', authMiddleware, confirmarMensalidade);
 
 module.exports = router;
+

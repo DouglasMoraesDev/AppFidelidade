@@ -1,40 +1,58 @@
-// api/src/controllers/movimentos.controller.js
 const prisma = require('../config/prismaClient');
+const { assertMensalidadeAtiva } = require('../services/assinatura.service');
 
-/**
- * POST /api/movimentos
- * Body: { cartaoId, tipo, pontos, descricao }
- * Faz operação transacional: insere movimento e atualiza pontos do cartão
- */
 async function criarMovimento(req, res) {
   try {
-    console.log('[Mov] POST /api/movimentos - body:', req.body);
-    const { cartaoId, tipo, pontos, descricao } = req.body;
-    if (!cartaoId || !tipo || typeof pontos === 'undefined') return res.status(400).json({ error: 'cartaoId, tipo e pontos são obrigatórios' });
+    const estabelecimentoId = req.estabelecimentoId;
+    if (!estabelecimentoId) return res.status(401).json({ error: 'Estabelecimento não identificado' });
 
-    const cid = Number(cartaoId);
+    const { cartaoId, pontos, descricao } = req.body;
+    if (!cartaoId || typeof pontos === 'undefined') return res.status(400).json({ error: 'cartaoId e pontos são obrigatórios' });
+
+    if (Number(pontos) <= 0) return res.status(400).json({ error: 'Informe pontos maiores que zero' });
+
+    await assertMensalidadeAtiva(estabelecimentoId);
+
+    const cartao = await prisma.cartaoFidelidade.findUnique({
+      where: { id: Number(cartaoId) },
+      include: { cliente: true }
+    });
+
+    if (!cartao) return res.status(404).json({ error: 'Cartão não encontrado' });
+    if (cartao.estabelecimentoId !== Number(estabelecimentoId)) {
+      return res.status(403).json({ error: 'Cartão não pertence ao seu estabelecimento' });
+    }
+
     const pts = Number(pontos);
 
-    // transação: cria movimento e atualiza pontos do cartão
-    const [movimento, cartaoAtualizado] = await prisma.$transaction([
-      prisma.movimento.create({
+    const resultado = await prisma.$transaction(async (tx) => {
+      const movimento = await tx.movimento.create({
         data: {
-          cartaoId: cid,
-          tipo,
+          cartaoId: cartao.id,
+          tipo: 'credito',
           pontos: pts,
-          descricao: descricao || null
+          descricao: descricao || 'Pontos adicionados'
         }
-      }),
-      prisma.cartaoFidelidade.update({
-        where: { id: cid },
-        data: { pontos: { increment: pts } } // incrementa (pts pode ser negativo para débito)
-      })
-    ]);
+      });
 
-    console.log('[Mov] criado id=', movimento.id, 'cartao pontos atualizados');
-    return res.status(201).json({ movimento, cartao: cartaoAtualizado });
+      const cartaoAtualizado = await tx.cartaoFidelidade.update({
+        where: { id: cartao.id },
+        data: { pontos: { increment: pts } },
+        include: {
+          cliente: true,
+          movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 }
+        }
+      });
+
+      return { movimento, cartao: cartaoAtualizado };
+    });
+
+    return res.status(201).json(resultado);
   } catch (err) {
     console.error('[Mov] erro criarMovimento:', err && err.stack ? err.stack : err);
+    if (err.code === 'MENSALIDADE_VENCIDA') {
+      return res.status(402).json({ error: 'Mensalidade vencida. Regularize para continuar' });
+    }
     return res.status(500).json({ error: 'Erro ao criar movimento' });
   }
 }

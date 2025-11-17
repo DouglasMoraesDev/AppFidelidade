@@ -1,5 +1,5 @@
 // frontend/components/pages/SuperAdminEstablishments.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Establishment, Payment } from '../../types';
 import { TrashIcon, PencilIcon, ClipboardListIcon, DocumentTextIcon, PlusIcon } from '../icons/Icons';
 
@@ -7,14 +7,20 @@ interface SuperAdminEstablishmentsProps {
   establishments: Establishment[];
   onUpdate: (establishment: Establishment) => void;
   onDelete: (establishmentId: number) => void;
+  onAddPayment: (establishmentId: number, date?: string) => Promise<void> | void;
 }
 
-const SuperAdminEstablishments: React.FC<SuperAdminEstablishmentsProps> = ({ establishments, onUpdate, onDelete }) => {
+const SuperAdminEstablishments: React.FC<SuperAdminEstablishmentsProps> = ({ establishments, onUpdate, onDelete, onAddPayment }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingEstablishment, setEditingEstablishment] = useState<Establishment | null>(null);
   const [modalError, setModalError] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const [newPaymentDate, setNewPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  useEffect(() => {
+    if (!editingEstablishment) return;
+    const fresh = establishments.find(est => est.id === editingEstablishment.id);
+    if (fresh) setEditingEstablishment(fresh);
+  }, [establishments]);
 
   const filteredEstablishments = useMemo(() =>
     establishments.filter(est =>
@@ -44,19 +50,23 @@ const SuperAdminEstablishments: React.FC<SuperAdminEstablishmentsProps> = ({ est
     setModalError('');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editingEstablishment) {
-      if (!editingEstablishment.name || !editingEstablishment.username) {
-        setModalError('Nome e Usuário são obrigatórios.');
+      if (!editingEstablishment.name) {
+        setModalError('Nome é obrigatório.');
         return;
       }
       if (editingEstablishment.pointsForVoucher <= 0) {
         setModalError('Pontos para voucher deve ser maior que zero.');
         return;
       }
-      onUpdate(editingEstablishment);
-      setEditingEstablishment(null);
-      setModalError('');
+      try {
+        await onUpdate(editingEstablishment);
+        setEditingEstablishment(null);
+        setModalError('');
+      } catch (err: any) {
+        setModalError(err?.message || 'Erro ao salvar');
+      }
     }
   };
 
@@ -71,14 +81,9 @@ const SuperAdminEstablishments: React.FC<SuperAdminEstablishmentsProps> = ({ est
     }
   };
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     if (editingEstablishment) {
-      const newPayment: Payment = {
-        id: Date.now().toString(),
-        date: new Date(newPaymentDate).toISOString(),
-      };
-      const updatedHistory = [...editingEstablishment.paymentHistory, newPayment];
-      setEditingEstablishment({ ...editingEstablishment, paymentHistory: updatedHistory });
+      await onAddPayment(editingEstablishment.id, newPaymentDate);
     }
   };
 

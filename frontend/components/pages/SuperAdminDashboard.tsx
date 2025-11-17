@@ -4,6 +4,12 @@ import { UsersIcon, GiftIcon, BuildingOfficeIcon } from '../icons/Icons';
 
 interface SuperAdminDashboardProps {
   establishments: Establishment[];
+  metrics?: {
+    estabelecimentos: number;
+    clientes: number;
+    vouchers: number;
+    inadimplentes: number;
+  } | null;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string | number; color: string }> = ({ icon, title, value, color }) => (
@@ -18,10 +24,11 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ establishments }) => {
-    const totalClients = establishments.reduce((acc, curr) => acc + curr.clients.length, 0);
-    const totalVouchers = establishments.reduce((acc, curr) => acc + curr.totalVouchersSent, 0);
-    const recentEstablishments = [...establishments].sort((a, b) => b.id - a.id).slice(0, 5);
+const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ establishments, metrics }) => {
+  const totalEstabs = metrics?.estabelecimentos ?? establishments.length;
+  const totalClients = metrics?.clientes ?? establishments.reduce((acc, curr) => acc + curr.clients.length, 0);
+  const totalVouchers = metrics?.vouchers ?? establishments.reduce((acc, curr) => acc + curr.totalVouchersSent, 0);
+  const recentEstablishments = [...establishments].sort((a, b) => b.id - a.id).slice(0, 5);
 
 
   return (
@@ -31,10 +38,11 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ establishment
         <p className="text-on-surface-secondary">Visão geral da sua plataforma.</p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard icon={<BuildingOfficeIcon className="h-6 w-6 text-white"/>} title="Total de Estabelecimentos" value={establishments.length} color="bg-blue-500" />
-        <StatCard icon={<UsersIcon className="h-6 w-6 text-white"/>} title="Total de Clientes Finais" value={totalClients} color="bg-green-500" />
-        <StatCard icon={<GiftIcon className="h-6 w-6 text-white"/>} title="Total de Vouchers Enviados" value={totalVouchers} color="bg-yellow-500" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard icon={<BuildingOfficeIcon className="h-6 w-6 text-white"/>} title="Estabelecimentos" value={totalEstabs} color="bg-blue-500" />
+        <StatCard icon={<UsersIcon className="h-6 w-6 text-white"/>} title="Clientes Finais" value={totalClients} color="bg-green-500" />
+        <StatCard icon={<GiftIcon className="h-6 w-6 text-white"/>} title="Vouchers Enviados" value={totalVouchers} color="bg-yellow-500" />
+        <StatCard icon={<BuildingOfficeIcon className="h-6 w-6 text-white"/>} title="Inadimplentes" value={metrics?.inadimplentes ?? 0} color="bg-red-500" />
       </div>
 
       <div>
@@ -46,10 +54,10 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ establishment
                 <li key={est.id} className="p-4 flex justify-between items-center hover:bg-background/50">
                   <div>
                     <p className="font-semibold text-on-surface">{est.name}</p>
-                    <p className="text-sm text-on-surface-secondary">{est.email}</p>
+                    <p className="text-sm text-on-surface-secondary">{est.email || '—'}</p>
                   </div>
                   <span className="text-sm text-on-surface-secondary">
-                    {new Date(est.id).toLocaleDateString()}
+                    ID #{est.id}
                   </span>
                 </li>
               ))}

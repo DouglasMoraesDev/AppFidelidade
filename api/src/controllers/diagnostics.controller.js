@@ -17,4 +17,34 @@ async function testDB(req, res) {
   }
 }
 
-module.exports = { testDB };
+async function overview(req, res) {
+  try {
+    const agora = new Date();
+
+    const [estabelecimentos, clientes, vouchers, inadimplentes] = await Promise.all([
+      prisma.estabelecimento.count(),
+      prisma.cliente.count(),
+      prisma.voucher.count(),
+      prisma.estabelecimento.count({
+        where: {
+          OR: [
+            { assinaturaValidaAte: null },
+            { assinaturaValidaAte: { lt: agora } }
+          ]
+        }
+      })
+    ]);
+
+    return res.json({
+      estabelecimentos,
+      clientes,
+      vouchers,
+      inadimplentes
+    });
+  } catch (err) {
+    console.error('diagnostics.overview erro:', err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+}
+
+module.exports = { testDB, overview };

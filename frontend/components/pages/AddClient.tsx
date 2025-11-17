@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { Client } from '../../types';
-
 interface AddClientProps {
-  onAddClient: (client: Omit<Client, 'id'>) => void;
+  onAddClient: (client: { name: string; phone: string; points: number }) => void;
 }
 
 const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {

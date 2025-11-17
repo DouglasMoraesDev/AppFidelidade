@@ -6,13 +6,16 @@ interface LoginPageProps {
   onLogin: (username: string, passwordHash: string) => void;
   onNavigateToRegister: () => void;
   onNavigateToChooser: () => void;
+  loading?: boolean;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, onNavigateToChooser }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, onNavigateToChooser, loading: externalLoading }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+
+  const busy = loading || externalLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,10 +76,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, on
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={busy}
               className="w-full bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {busy ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
           {msg && <div className="mt-4 text-center text-sm text-red-400">{msg}</div>}

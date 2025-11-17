@@ -4,9 +4,10 @@ import { CreditCardIcon, QrCodeIcon, ClipboardDocumentIcon, CheckCircleIcon } fr
 
 interface PaymentPageProps {
     onPaymentSuccess: () => void;
+    loading?: boolean;
 }
 
-const PaymentPage: React.FC<PaymentPageProps> = ({ onPaymentSuccess }) => {
+const PaymentPage: React.FC<PaymentPageProps> = ({ onPaymentSuccess, loading }) => {
     const [pixCode] = useState('00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540510.005802BR5913NOME DO LOJISTA6009SAO PAULO62070503***6304E2D1');
     const [copied, setCopied] = useState(false);
 
@@ -21,7 +22,7 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onPaymentSuccess }) => {
             <div className="w-full max-w-md text-center">
                 <CreditCardIcon className="h-16 w-16 text-yellow-400 mx-auto mb-4" />
                 <h1 className="text-3xl font-bold text-on-surface">Ops, sua assinatura expirou!</h1>
-                <p className="text-on-surface-secondary mt-2 mb-8">Para continuar usando o LoyaltyApp, por favor, renove sua assinatura.</p>
+                <p className="text-on-surface-secondary mt-2 mb-8">Para continuar usando o AppFidelidade, por favor, renove sua assinatura.</p>
 
                 <div className="bg-surface p-8 rounded-xl shadow-2xl space-y-6">
                     <h2 className="text-xl font-semibold">Pague com Pix para liberar seu acesso</h2>
@@ -62,9 +63,10 @@ const PaymentPage: React.FC<PaymentPageProps> = ({ onPaymentSuccess }) => {
 
                     <button
                         onClick={onPaymentSuccess}
-                        className="w-full bg-secondary text-white font-bold py-3 px-4 rounded-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-secondary transition-all duration-300"
+                        disabled={loading}
+                        className="w-full bg-secondary text-white font-bold py-3 px-4 rounded-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-secondary transition-all duration-300 disabled:opacity-60"
                     >
-                        Já paguei, verificar acesso
+                        {loading ? 'Verificando...' : 'Já paguei, verificar acesso'}
                     </button>
                 </div>
             </div>
