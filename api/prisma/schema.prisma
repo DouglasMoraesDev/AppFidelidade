@@ -1,7 +1,7 @@
 generator client {
   provider = "prisma-client-js"
-  # Gerar engines para múltiplos binários OpenSSL para compatibilidade em diferentes runtimes
-  # Inclui `debian-openssl-1.1.x` (Railway/ambientes antigos) e `debian-openssl-3.0.x` (ambientes mais novos)
+  // Gerar engines para múltiplos binários OpenSSL para compatibilidade em diferentes runtimes
+  // Inclui `debian-openssl-1.1.x` (Railway/ambientes antigos) e `debian-openssl-3.0.x` (ambientes mais novos)
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
