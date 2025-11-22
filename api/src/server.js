@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 
 const db = require('./config/db');
@@ -21,6 +22,16 @@ app.use('/api/vouchers', require('./routes/vouchers.routes'));
 app.use('/api/mensalidade', require('./routes/mensalidade.routes'));
 app.use('/api/diag', require('./routes/diagnostics.routes'));
 app.use('/api/superadmin', require('./routes/superadmin.routes'));
+
+// Se existir o build do frontend (frontend/dist) ou a variável SERVE_FRONTEND=true,
+// servir os arquivos estáticos do frontend (permite deploy como único serviço).
+const frontendDistPath = path.join(__dirname, '..', '..', 'frontend', 'dist');
+if (process.env.SERVE_FRONTEND === 'true' || fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+}
 
 const prisma = require('./config/prismaClient');
 

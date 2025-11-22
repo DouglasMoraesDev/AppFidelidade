@@ -1,0 +1,57 @@
+name: Build and Publish Docker Image
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to GHCR
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}
+        platforms: linux/amd64,linux/arm64
+
+    - name: Set IMAGE variable
+      run: echo "IMAGE=ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}" >> $GITHUB_ENV
+
+    - name: Deploy to Railway (optional)
+      run: |
+        RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
+        RAILWAY_PROJECT_ID="${{ secrets.RAILWAY_PROJECT_ID }}"
+        IMAGE="ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}"
+
+        if [ -z "$RAILWAY_TOKEN" ]; then
+          echo "RAILWAY_TOKEN not set — skipping Railway deploy"
+          exit 0
+        fi
+
+        npm i -g @railway/cli
+        railway login --apiKey "$RAILWAY_TOKEN"
+        # Tenta fazer deploy usando a imagem. Dependendo da configuração do projeto Railway,
+        # pode ser necessário ajustar o comando abaixo ou realizar a associação manualmente no painel.
+        railway up --project "$RAILWAY_PROJECT_ID" --image "$IMAGE" || echo "railway up falhou — verifique as credenciais e a configuração do projeto"
