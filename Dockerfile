@@ -28,4 +28,9 @@ ENV NODE_ENV=production
 ENV PORT=4000
 EXPOSE 4000
 
+# Instalar OpenSSL/CA para garantir compatibilidade com Prisma engines em runtime
+RUN apt-get update -y \
+	&& apt-get install -y --no-install-recommends openssl ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
+
 CMD ["node", "src/server.js"]
