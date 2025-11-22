@@ -16,6 +16,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health endpoint simples para que o load balancer/edge possa verificar disponibilidade
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // servir imagens (logos) estáticas da pasta img/
 app.use('/img', express.static(path.join(__dirname, '..', 'img')));
 
@@ -81,4 +86,13 @@ async function start() {
 start().catch(err => {
   console.error('Erro ao iniciar servidor:', err && err.stack ? err.stack : err);
   process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, p) => {
+  console.error('Unhandled Rejection at:', p, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception thrown:', err && err.stack ? err.stack : err);
+  // Em produção, poderíamos sair do processo para reiniciar: process.exit(1)
 });
