@@ -20,8 +20,8 @@ WORKDIR /app
 
 # Copia o backend preparado
 COPY --from=build /workspace/api ./api
-# Copia o build do frontend para dentro da pasta do api (server serve os arquivos)
-COPY --from=build /workspace/frontend/dist ./api/frontend/dist
+# Copia o build do frontend para o local esperado pelo servidor (/app/frontend/dist)
+COPY --from=build /workspace/frontend/dist ./frontend/dist
 
 WORKDIR /app/api
 ENV NODE_ENV=production
