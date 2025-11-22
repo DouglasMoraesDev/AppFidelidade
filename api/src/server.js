@@ -10,6 +10,12 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '10mb' }));
 
+// Log simples de cada requisição para ajudar debug em produção
+app.use((req, res, next) => {
+  console.log(`[Request] ${req.method} ${req.url}`);
+  next();
+});
+
 // servir imagens (logos) estáticas da pasta img/
 app.use('/img', express.static(path.join(__dirname, '..', 'img')));
 
@@ -66,8 +72,9 @@ async function start() {
   });
 
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => {
-    console.log(`API rodando na porta ${PORT}`);
+  const HOST = process.env.HOST || '0.0.0.0';
+  app.listen(PORT, HOST, () => {
+    console.log(`API rodando na porta ${PORT} (host ${HOST})`);
   });
 }
 
