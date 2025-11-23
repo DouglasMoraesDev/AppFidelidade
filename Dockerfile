@@ -1,7 +1,7 @@
 # Dockerfile multi-stage para AppFidelidade (frontend + backend)
 # Constrói o frontend com Vite e o backend com Node/Prisma e cria uma imagem mínima para produção.
 
-FROM node:22.12.0 AS build
+FROM node:20-bullseye AS build
 WORKDIR /workspace
 
 # --- frontend build ---
@@ -15,10 +15,10 @@ COPY api/ ./api/
 RUN cd api && npm ci --prefer-offline --no-audit --no-fund && npx prisma generate && npm prune --production
 
 
-FROM node:22.12.0-slim AS runtime
+FROM gcr.io/distroless/nodejs:20 AS runtime
 WORKDIR /app
 
-# Copia o backend preparado
+# Copia o backend preparado (inclui node_modules e Prisma client gerado)
 COPY --from=build /workspace/api ./api
 # Copia o build do frontend para o local esperado pelo servidor (/app/frontend/dist)
 COPY --from=build /workspace/frontend/dist ./frontend/dist
@@ -28,9 +28,6 @@ ENV NODE_ENV=production
 ENV PORT=4000
 EXPOSE 4000
 
-# Instalar OpenSSL/CA para garantir compatibilidade com Prisma engines em runtime
-RUN apt-get update -y \
-	&& apt-get install -y --no-install-recommends openssl ca-certificates \
-	&& rm -rf /var/lib/apt/lists/*
-
-CMD ["node", "src/server.js"]
+# Distroless images são minimalistas e já contêm CA certs; não há apt-get aqui.
+# O entrypoint do distroless nodejs é o binário 'node', então passamos o script como CMD.
+CMD ["src/server.js"]
