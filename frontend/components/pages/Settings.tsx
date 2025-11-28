@@ -11,8 +11,7 @@ interface SettingsProps {
   onConfigSave: (payload: { mensagem_voucher?: string; nome_app?: string; link_consulta?: string }) => void;
   onPasswordChange: (currentPassword: string, newPassword: string) => void;
   onDownloadBackup: () => void;
-  onMensalidadeCheck: () => void;
-  mensalidadeExpirada: boolean;
+  lastPaymentDate?: string;
   onLogout: () => void;
 }
 
@@ -26,8 +25,7 @@ const Settings: React.FC<SettingsProps> = ({
   onConfigSave,
   onPasswordChange,
   onDownloadBackup,
-  onMensalidadeCheck,
-  mensalidadeExpirada,
+  lastPaymentDate,
   onLogout
 }) => {
   const [localAppName, setLocalAppName] = useState(appName);
@@ -160,12 +158,15 @@ const Settings: React.FC<SettingsProps> = ({
               <DocumentDownloadIcon className="w-5 h-5" />
               Fazer Backup
             </button>
+            {lastPaymentDate && (
+              <div className="bg-background/60 p-4 rounded-md space-y-2">
+                <p className="text-sm text-on-surface-secondary">📅 <strong>Último Pagamento Confirmado:</strong></p>
+                <p className="text-lg font-semibold text-primary">{new Date(lastPaymentDate).toLocaleDateString('pt-BR')}</p>
+              </div>
+            )}
             <button onClick={() => setTermsOpen(true)} className="w-full flex items-center justify-center gap-2 bg-background hover:bg-background/70 text-on-surface py-2 rounded-md">
               <DocumentTextIcon className="w-5 h-5" />
               Termos de Uso
-            </button>
-            <button onClick={onMensalidadeCheck} className={`w-full py-2 rounded-md font-semibold ${mensalidadeExpirada ? 'bg-red-500 text-white' : 'bg-green-600 text-white'}`}>
-              {mensalidadeExpirada ? 'Pagamento pendente - Informar' : 'Mensalidade em dia'}
             </button>
             <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-2 rounded-md border border-red-400 text-red-400 hover:bg-red-500/10">
               <LogoutIcon className="w-5 h-5" />
@@ -178,14 +179,77 @@ const Settings: React.FC<SettingsProps> = ({
       {termsOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-surface p-6 rounded-lg shadow-2xl max-w-2xl max-h-[80vh] overflow-y-auto space-y-4">
-            <h2 className="text-2xl font-bold">Termos de Uso</h2>
-            <p className="text-sm text-on-surface-secondary">
-              Este aplicativo foi projetado para gerenciar programas de fidelidade. Ao utilizá-lo, você concorda em manter os dados dos clientes seguros, respeitar a LGPD
-              e utilizar o envio de vouchers apenas com consentimento do cliente. Qualquer dúvida entre em contato com o suporte AppFidelidade.
-            </p>
-            <div className="text-right">
-              <button onClick={() => setTermsOpen(false)} className="px-4 py-2 bg-primary text-white rounded-md">
-                Fechar
+            <h2 className="text-2xl font-bold text-on-surface">Termos de Uso - AppFidelidade</h2>
+            
+            <div className="space-y-4 text-sm text-on-surface-secondary">
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">1. Objetivo da Plataforma</h3>
+                <p>AppFidelidade é uma plataforma de gerenciamento de programas de fidelidade digital, permitindo que estabelecimentos gerenciem clientes, pontos e vouchers de forma simples e eficiente.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">2. Responsabilidades do Estabelecimento</h3>
+                <p className="mb-2">Como usuário da plataforma, você se compromete a:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Manter a confidencialidade de suas credenciais de acesso</li>
+                  <li>Proteger os dados pessoais dos clientes em conformidade com a LGPD (Lei Geral de Proteção de Dados)</li>
+                  <li>Utilizar a plataforma exclusivamente para fins legítimos</li>
+                  <li>Obter consentimento explícito dos clientes antes de cadastrá-los no programa</li>
+                  <li>Ser responsável por todas as atividades realizadas em sua conta</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">3. Pontos e Vouchers</h3>
+                <p className="mb-2">Sobre o funcionamento de pontos e vouchers:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Pontos são atribuídos conforme as regras configuradas pelo estabelecimento</li>
+                  <li>Vouchers são gerados automaticamente quando pontos atingem o limite configurado</li>
+                  <li>O estabelecimento é responsável por entregar o voucher ao cliente</li>
+                  <li>AppFidelidade não interfere no valor ou validade dos vouchers - esses são definidos pelo estabelecimento</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">4. Proteção de Dados</h3>
+                <p className="mb-2">AppFidelidade se compromete a:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Manter os dados dos clientes com segurança</li>
+                  <li>Cumprir as regulamentações de proteção de dados (LGPD)</li>
+                  <li>Não compartilhar dados com terceiros sem consentimento</li>
+                  <li>Fornecer backup dos dados do estabelecimento</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">5. Comunicação com Clientes</h3>
+                <p className="mb-2">Comunicações via WhatsApp:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>Mensagens são enviadas apenas com consentimento do cliente</li>
+                  <li>O estabelecimento é responsável pelo conteúdo das mensagens</li>
+                  <li>AppFidelidade não envia mensagens sem solicitação explícita</li>
+                </ul>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">6. Limite de Responsabilidade</h3>
+                <p>AppFidelidade não é responsável por: perdas de dados (mantenha backups), interrupções de serviço, ou problemas causados pelo uso inadequado da plataforma.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">7. Modificações dos Termos</h3>
+                <p>AppFidelidade se reserva o direito de modificar estes termos a qualquer momento. Mudanças serão comunicadas aos usuários.</p>
+              </section>
+
+              <section>
+                <h3 className="font-semibold text-on-surface mb-2">8. Suporte e Dúvidas</h3>
+                <p>Para dúvidas ou problemas, entre em contato com o suporte AppFidelidade através do app.</p>
+              </section>
+            </div>
+
+            <div className="text-right border-t border-background pt-4">
+              <button onClick={() => setTermsOpen(false)} className="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-focus">
+                Entendi
               </button>
             </div>
           </div>

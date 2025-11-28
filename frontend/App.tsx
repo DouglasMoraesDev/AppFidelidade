@@ -106,21 +106,22 @@ const App: React.FC = () => {
       date: p.pagoEm
     }));
 
-    // Normaliza o link: converte formato antigo /consulta/{slug} para /consultar?slug={slug}
-    let shareLink = snapshot.estabelecimento?.link_consulta
-      || (typeof window !== 'undefined' ? `${window.location.origin}/consultar?slug=${snapshot.estabelecimento?.slug_publico}` : '');
+    // Constrói o link de consulta pública baseado na URL atual
+    let shareLink = snapshot.estabelecimento?.link_consulta;
     
-    if (shareLink && typeof window !== 'undefined') {
-      // Se o link está no formato antigo /consulta/{slug}, converte para o novo formato
-      const oldFormatMatch = shareLink.match(/\/consulta\/([^\/\?]+)/);
-      if (oldFormatMatch && oldFormatMatch[1]) {
-        const slug = oldFormatMatch[1];
-        const origin = window.location.origin;
-        shareLink = `${origin}/consultar?slug=${slug}`;
+    if (!shareLink && typeof window !== 'undefined') {
+      // Se não tiver link salvo, constrói baseado na origem atual
+      const slug = snapshot.estabelecimento?.slug_publico;
+      if (slug) {
+        shareLink = `${window.location.origin}/consultar?slug=${slug}`;
       }
-      // Garante que está usando a porta correta (3000)
-      shareLink = shareLink.replace(/localhost:5173/g, 'localhost:3000');
-      shareLink = shareLink.replace(/localhost:5174/g, 'localhost:3000');
+    }
+
+    if (shareLink && typeof window !== 'undefined') {
+      // Normaliza o link para sempre usar o origin correto
+      // Remove portas de desenvolvimento (5173, 5174, 3000, etc) e usa a origem
+      const url = new URL(shareLink, window.location.origin);
+      shareLink = url.href;
     }
 
     return {
@@ -140,7 +141,8 @@ const App: React.FC = () => {
       passwordHash: '',
       slug: snapshot.estabelecimento.slug_publico,
       publicLink: shareLink,
-      appDisplayName: snapshot.estabelecimento.nome_app || 'AppFidelidade'
+      appDisplayName: snapshot.estabelecimento.nome_app || 'AppFidelidade',
+      lastPaymentDate: snapshot.stats?.assinaturaPagaEm || null
     };
   };
 
@@ -508,8 +510,7 @@ const App: React.FC = () => {
             onConfigSave={handleConfigUpdate}
             onPasswordChange={handleChangePassword}
             onDownloadBackup={handleBackupDownload}
-            onMensalidadeCheck={handleMensalidadeCheck}
-            mensalidadeExpirada={mensalidadeExpirada}
+            lastPaymentDate={loggedInEstablishment.lastPaymentDate}
             onLogout={handleLogout}
           />
         );

@@ -57,7 +57,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen, currentPage, setCu
         <div className="flex items-center justify-between p-4 border-b border-background">
           <div className="flex items-center gap-2">
             <GiftIcon className="h-8 w-8 text-primary"/>
-            <h1 className="text-xl font-bold">LoyaltyApp</h1>
+            <h1 className="text-xl font-bold">AppFidelidade</h1>
           </div>
           <button onClick={() => setIsOpen(false)} className="md:hidden text-on-surface-secondary hover:text-on-surface">
             <XIcon className="h-6 w-6" />

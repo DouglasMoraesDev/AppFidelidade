@@ -6,6 +6,7 @@ export interface Client {
   phone: string;
   points: number;
   lastPointAddition?: string | Date | null;
+  lastVoucherSent?: string | Date | null;
 }
 
 export type Page = 'dashboard' | 'addClient' | 'addPoints' | 'clients' | 'notifications' | 'settings' | 'pointsLink';
@@ -44,4 +45,5 @@ export interface Establishment {
   slug?: string;
   publicLink?: string;
   appDisplayName?: string;
+  lastPaymentDate?: string | null;
 }
