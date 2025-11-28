@@ -17,9 +17,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -30,7 +27,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      # Build para amd64 (Linux standard) — removemos multi-arch temporariamente para evitar falhas
+      - name: Build and push Docker image (amd64)
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -38,17 +36,21 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/appfidelidade:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/appfidelidade:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/appfidelidade:buildcache,mode=max
 
-      - name: Deploy to Railway (optional)
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
+      - name: Deploy to Railway (if secrets provided)
+        if: ${{ env.RAILWAY_TOKEN != '' }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          IMAGE: ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/appfidelidade:latest
         run: |
+          [ -n "$RAILWAY_TOKEN" ] || { echo "Pulando Railway deploy (secrets não configurados)"; exit 0; }
+          echo "Instalando Railway CLI..."
           npm i -g @railway/cli
+          echo "Autenticando no Railway..."
           railway login --apiKey "$RAILWAY_TOKEN"
-          # Tenta fazer deploy usando a imagem. Dependendo da configuração do projeto Railway,
-          # pode ser necessário ajustar o comando abaixo ou realizar a associação manualmente no painel.
-          railway up --project "$RAILWAY_PROJECT_ID" --image "$IMAGE" || echo "railway up falhou — verifique as credenciais e a configuração do projeto"
+          echo "Acionando redeploy no Railway com a imagem: $IMAGE"
+          railway up --project "$RAILWAY_PROJECT_ID" || echo "Nota: railway up pode requerer configuração manual do serviço no painel"
