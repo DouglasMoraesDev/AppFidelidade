@@ -34,4 +34,3 @@ jobs:
             ghcr.io/douglasmoraesdev/appfidelidade:${{ github.sha }}
             ghcr.io/douglasmoraesdev/appfidelidade:latest
           platforms: linux/amd64
-

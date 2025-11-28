@@ -13,7 +13,7 @@ Seu projeto foi **completamente preparado** para produção:
 ✔️ **CI/CD Automatizado (GitHub Actions)**
 
 - Cada push em `main` compila a imagem Docker
-- Publica em `ghcr.io/DouglasMoraesDev/appfidelidade:latest`
+- Publica em `ghcr.io/douglasmoraesdev/appfidelidade:latest`
 - Pode auto-deployar no Railway se secrets forem configurados
 
 ✔️ **Documentação Completa**
@@ -100,7 +100,7 @@ NODE_ENV=production
 ```
 Aba "Settings" ou "Deploy"
 → Procure por "Image" ou "Docker Image"
-→ Cole: ghcr.io/DouglasMoraesDev/appfidelidade:latest
+→ Cole: ghcr.io/douglasmoraesdev/appfidelidade:latest
 → Clique em "Redeploy Latest" ou "Restart"
 ```
 
@@ -272,7 +272,7 @@ https://appfidelidade-production.up.railway.app/
 
 - [ ] GitHub Actions passou (Actions tab está verde)
 - [ ] Railway → Variables configuradas (sem aspas em DATABASE_URL)
-- [ ] Railway → Image apontada: `ghcr.io/DouglasMoraesDev/appfidelidade:latest`
+- [ ] Railway → Image apontada: `ghcr.io/douglasmoraesdev/appfidelidade:latest`
 - [ ] Railway → Redeploy Latest realizado
 - [ ] Comando `npx prisma migrate deploy` executado
 - [ ] Health endpoint respondendo: `curl .../health`

@@ -79,7 +79,7 @@ NODE_ENV=production
 Settings → Image (ou Deploy)
 ```
 
-**Cole:** `ghcr.io/DouglasMoraesDev/appfidelidade:latest`
+**Cole:** `ghcr.io/douglasmoraesdev/appfidelidade:latest`
 
 Clique em **"Redeploy Latest"** ou **"Restart"**
 
