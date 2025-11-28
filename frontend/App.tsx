@@ -468,7 +468,7 @@ const App: React.FC = () => {
     if (!loggedInEstablishment) return null;
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} voucherThreshold={loggedInEstablishment.pointsForVoucher} />;
+        return <Dashboard clients={loggedInEstablishment.clients} totalVouchersSent={loggedInEstablishment.totalVouchersSent} voucherThreshold={loggedInEstablishment.pointsForVoucher} establishmentName={loggedInEstablishment.name} />;
       case 'clients':
         return <ClientList clients={loggedInEstablishment.clients} onEdit={updateClient} onDelete={deleteClient} />;
       case 'addClient':

@@ -1,5 +1,5 @@
 {
   "name": "AppFidelidade Card Manager",
-  "description": "A comprehensive application to manage customer loyalty cards, points, and vouchers. Easily register clients, add points, track rewards, and send notifications.",
+  "description": "AppFidelidade - Sistema de cartão de fidelidade. Gerencie clientes, pontos, vouchers e recompensas com facilidade.",
   "requestFramePermissions": []
 }

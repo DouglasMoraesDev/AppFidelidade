@@ -70,7 +70,7 @@ const TelaPontosPublica: React.FC = () => {
 
   const ShareHeader = () => (
     <div className="mb-6 text-center">
-      <h1 className="text-3xl font-bold text-on-surface">Consulta de Pontos</h1>
+      <h1 className="text-3xl font-bold text-on-surface">AppFidelidade - Consulta de Pontos</h1>
       <p className="mt-2 text-on-surface-secondary">Informe seus dados para ver seu cartão fidelidade e acompanhar seus carimbos.</p>
     </div>
   );
@@ -141,3 +141,4 @@ const TelaPontosPublica: React.FC = () => {
 };
 
 export default TelaPontosPublica;
+

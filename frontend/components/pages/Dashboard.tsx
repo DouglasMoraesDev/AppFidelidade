@@ -1,11 +1,14 @@
 
+
 import React from 'react';
 import { Client } from '../../types';
-import { UsersIcon, GiftIcon, ClockIcon } from '../icons/Icons';
+import { UsersIcon, GiftIcon, ClockIcon, EnvelopeIcon } from '../icons/Icons';
 
 interface DashboardProps {
   clients: Client[];
   totalVouchersSent: number;
+  voucherThreshold: number;
+  establishmentName?: string;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string | number; color: string }> = ({ icon, title, value, color }) => (
@@ -20,16 +23,13 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-interface DashboardProps {
-  clients: Client[];
-  totalVouchersSent: number;
-  voucherThreshold: number;
-}
-
-const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, voucherThreshold }) => {
+const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, voucherThreshold, establishmentName = 'AppFidelidade' }) => {
   const recentPointAdditions = clients
     .filter(c => c.lastPointAddition && (new Date().getTime() - new Date(c.lastPointAddition).getTime()) < 24 * 60 * 60 * 1000)
     .sort((a, b) => new Date(b.lastPointAddition!).getTime() - new Date(a.lastPointAddition!).getTime());
+
+  // Simular vouchers recentes (essa informação poderia vir da API futura)
+  const vouchersRecentes: Array<{ id: string; clientName: string; timestamp: Date }> = [];
 
   const clientesComVoucher = clients.filter(c => c.points >= voucherThreshold);
   const clienteTopVoucher = clientesComVoucher.length > 0 
@@ -40,14 +40,34 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, vouch
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-on-surface mb-2">Resumo</h1>
-        <p className="text-on-surface-secondary">Bem-vindo ao seu painel de controle.</p>
+        <p className="text-on-surface-secondary">Bem-vindo, <span className="font-semibold text-on-surface">{establishmentName}</span>! Aqui está o resumo do seu negócio.</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard icon={<UsersIcon className="h-6 w-6 text-white"/>} title="Total de Clientes" value={clients.length} color="bg-blue-500" />
-        <StatCard icon={<GiftIcon className="h-6 w-6 text-white"/>} title="Vouchers Enviados" value={totalVouchersSent} color="bg-green-500" />
+        <StatCard icon={<EnvelopeIcon className="h-6 w-6 text-white"/>} title="Vouchers Enviados" value={totalVouchersSent} color="bg-green-500" />
         <StatCard icon={<ClockIcon className="h-6 w-6 text-white"/>} title="Atividade (24h)" value={recentPointAdditions.length} color="bg-yellow-500" />
       </div>
+
+      {vouchersRecentes.length > 0 && (
+        <div>
+          <h2 className="text-2xl font-bold text-on-surface mb-4">Vouchers Enviados Recentemente</h2>
+          <div className="bg-surface rounded-lg shadow-lg overflow-hidden">
+            <ul className="divide-y divide-background">
+              {vouchersRecentes.map(voucher => (
+                <li key={voucher.id} className="p-4 flex justify-between items-center hover:bg-background/50">
+                  <div>
+                    <p className="font-semibold text-on-surface">{voucher.clientName}</p>
+                  </div>
+                  <span className="text-sm text-on-surface-secondary">
+                    {voucher.timestamp.toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {clienteTopVoucher && (
         <div className="bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary rounded-lg p-6 shadow-lg">
@@ -93,3 +113,4 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, vouch
 };
 
 export default Dashboard;
+
