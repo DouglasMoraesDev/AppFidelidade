@@ -1,5 +1,7 @@
 // frontend/src/utils/api.ts
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+// Em produção, usar raiz (/) pois frontend é servido pelo backend na mesma porta
+// Em desenvolvimento, usar VITE_API_BASE ou localhost:4000
+const BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:4000');
 
 async function parseResponse(res: Response) {
   const txt = await res.text();

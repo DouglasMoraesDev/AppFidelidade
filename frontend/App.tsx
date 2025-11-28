@@ -39,7 +39,9 @@ import {
   superAdminAddPayment
 } from './utils/api';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+// Em produção, usar raiz (/) pois frontend é servido pelo backend
+// Em desenvolvimento, usar localhost:4000
+const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:4000');
 const DEFAULT_LOGO = 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500';
 const SUPER_ADMIN_SECRET = 'Dooug#525210';
 
