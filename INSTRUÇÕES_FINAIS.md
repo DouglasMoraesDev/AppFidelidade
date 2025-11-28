@@ -5,26 +5,31 @@
 Seu projeto foi **completamente preparado** para produção:
 
 ✔️ **Backend + Frontend Integrados**
+
 - O backend serve o frontend compilado
 - Tudo roda em um único servidor Node.js
 - Acesso em: `https://appfidelidade-production.up.railway.app/`
 
 ✔️ **CI/CD Automatizado (GitHub Actions)**
+
 - Cada push em `main` compila a imagem Docker
 - Publica em `ghcr.io/DouglasMoraesDev/appfidelidade:latest`
 - Pode auto-deployar no Railway se secrets forem configurados
 
 ✔️ **Documentação Completa**
+
 - `README.md` - Setup e desenvolvimento
 - `DEPLOY-RAILWAY.md` - Passo a passo do deploy
 - `CHECKLIST.md` - Verificação final
 - `TROUBLESHOOTING.md` - Soluções para problemas
 
 ✔️ **Arquivos de Teste**
+
 - `test-build.sh` (Linux/Mac)
 - `test-build.ps1` (Windows PowerShell)
 
 ✔️ **GitHub Actions Workflow**
+
 - Simples e robusto
 - Build single-arch (linux/amd64)
 - Cache habilitado
@@ -37,6 +42,7 @@ Seu projeto foi **completamente preparado** para produção:
 ### PASSO 1: Aguardar GitHub Actions (1-2 minutos)
 
 **O que já foi feito:**
+
 ```
 ✅ Git commit: 86f3496
 ✅ Git push: origem main
@@ -44,11 +50,13 @@ Seu projeto foi **completamente preparado** para produção:
 ```
 
 **O que você deve fazer:**
+
 1. Acesse: https://github.com/DouglasMoraesDev/AppFidelidade/actions
 2. Procure pelo run mais recente
 3. Aguarde o passo "Build and push Docker image" ficar verde ✅
 
 **Se falhar:**
+
 - Clique no run com X vermelho
 - Veja o erro no log
 - Compartilhe comigo para corrigir
@@ -60,16 +68,19 @@ Seu projeto foi **completamente preparado** para produção:
 **Acesse:** https://railway.app/dashboard
 
 #### 2.1. Ir para o Serviço
+
 ```
 Dashboard → Services → (clique no seu serviço "AppFidelidade")
 ```
 
 #### 2.2. Configurar Variáveis de Ambiente
+
 ```
 Aba "Variables" → Adicione/confirme:
 ```
 
 **Cole exatamente isto:**
+
 ```
 DATABASE_URL=mysql://root:xBupgaNtJLhdplUfgqQxslAfyNxcROSu@shuttle.proxy.rlwy.net:18002/railway
 PORT=4000
@@ -79,11 +90,13 @@ SERVE_FRONTEND=true
 NODE_ENV=production
 ```
 
-⚠️ **IMPORTANTE:** 
+⚠️ **IMPORTANTE:**
+
 - **Sem aspas duplas** em DATABASE_URL
 - Tudo tem que ser **exatamente como acima**
 
 #### 2.3. Apontar para a Imagem Docker
+
 ```
 Aba "Settings" ou "Deploy"
 → Procure por "Image" ou "Docker Image"
@@ -106,11 +119,13 @@ npx prisma migrate deploy
 ```
 
 **Resultado esperado:**
+
 ```
 ✅ Prisma Migrations applied successfully
 ```
 
 Se der erro de conexão:
+
 - DATABASE_URL está correta?
 - MySQL está rodando?
 - Credenciais estão certas?
@@ -127,6 +142,7 @@ curl https://appfidelidade-production.up.railway.app/health
 ```
 
 Ou acesse no navegador:
+
 ```
 https://appfidelidade-production.up.railway.app/health
 ```
@@ -134,11 +150,13 @@ https://appfidelidade-production.up.railway.app/health
 #### 4.2. Acessar o Frontend
 
 Abra no navegador:
+
 ```
 https://appfidelidade-production.up.railway.app/
 ```
 
 Você deve ver:
+
 - ✅ A página do seu app carregando
 - ✅ Sem erro "Application failed to respond"
 - ✅ Sem erro "Conexão recusada"
@@ -157,17 +175,20 @@ curl https://appfidelidade-production.up.railway.app/api/estabelecimentos
 ### ❌ "Application failed to respond"
 
 **Checklist:**
+
 1. ✅ GitHub Actions passou (imagem publicada)?
 2. ✅ Variáveis de ambiente estão corretas (sem aspas)?
 3. ✅ Railway fez redeploy (status verde)?
 4. ✅ Migrations foram aplicadas?
 
 **Ver logs:**
+
 ```
 Railway Dashboard → Services → Logs
 ```
 
 Procure por:
+
 ```
 ✅ [Prisma] Conectado com sucesso
 ✅ [Server] Servindo frontend estático de: /app/frontend/dist
@@ -183,10 +204,12 @@ Se ver erros, compartilhe comigo.
 **Significa:** O backend está rodando, mas não está servindo o frontend.
 
 **Causas:**
+
 - `SERVE_FRONTEND` não está setado como `true`
 - `frontend/dist` não foi copiado
 
 **Solução:**
+
 1. Verificar: Railway → Variables → `SERVE_FRONTEND=true`
 2. Redeploy: Railway → Redeploy Latest
 3. Esperar logs aparecer: `[Server] Servindo frontend...`
@@ -196,6 +219,7 @@ Se ver erros, compartilhe comigo.
 ### ❌ "Erro de conexão com banco de dados"
 
 **Verificar:**
+
 ```
 DATABASE_URL=mysql://root:xBupgaNtJLhdplUfgqQxslAfyNxcROSu@shuttle.proxy.rlwy.net:18002/railway
 ```
@@ -208,19 +232,19 @@ DATABASE_URL=mysql://root:xBupgaNtJLhdplUfgqQxslAfyNxcROSu@shuttle.proxy.rlwy.ne
 
 ## 📞 RESUMO DO QUE FOI ENTREGUE
 
-| Item | Status | Onde encontrar |
-|------|--------|-----------------|
-| Backend (Node.js + Express) | ✅ Pronto | `api/src/server.js` |
-| Frontend (React + Vite) | ✅ Pronto | `frontend/` |
-| Integração Backend+Frontend | ✅ Pronto | `api/package.json` (postinstall) |
-| Docker Multi-stage | ✅ Pronto | `Dockerfile` |
-| GitHub Actions CI/CD | ✅ Pronto | `.github/workflows/ci-deploy.yml` |
-| Prisma ORM com MySQL | ✅ Pronto | `api/prisma/schema.prisma` |
-| Health Endpoint | ✅ Pronto | `GET /health` |
-| README Completo | ✅ Pronto | `README.md` |
-| Guia Railway | ✅ Pronto | `DEPLOY-RAILWAY.md` |
-| Checklist | ✅ Pronto | `CHECKLIST.md` |
-| Troubleshooting | ✅ Pronto | `TROUBLESHOOTING.md` |
+| Item                        | Status    | Onde encontrar                    |
+| --------------------------- | --------- | --------------------------------- |
+| Backend (Node.js + Express) | ✅ Pronto | `api/src/server.js`               |
+| Frontend (React + Vite)     | ✅ Pronto | `frontend/`                       |
+| Integração Backend+Frontend | ✅ Pronto | `api/package.json` (postinstall)  |
+| Docker Multi-stage          | ✅ Pronto | `Dockerfile`                      |
+| GitHub Actions CI/CD        | ✅ Pronto | `.github/workflows/ci-deploy.yml` |
+| Prisma ORM com MySQL        | ✅ Pronto | `api/prisma/schema.prisma`        |
+| Health Endpoint             | ✅ Pronto | `GET /health`                     |
+| README Completo             | ✅ Pronto | `README.md`                       |
+| Guia Railway                | ✅ Pronto | `DEPLOY-RAILWAY.md`               |
+| Checklist                   | ✅ Pronto | `CHECKLIST.md`                    |
+| Troubleshooting             | ✅ Pronto | `TROUBLESHOOTING.md`              |
 
 ---
 
@@ -260,6 +284,7 @@ https://appfidelidade-production.up.railway.app/
 ## 🤝 SUPORTE
 
 Se algo não funcionar:
+
 1. Verificar `TROUBLESHOOTING.md` (tem soluções para problemas comuns)
 2. Coletar logs no Railway Dashboard
 3. Compartilhar os logs comigo

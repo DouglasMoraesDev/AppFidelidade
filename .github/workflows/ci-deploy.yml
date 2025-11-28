@@ -1,5 +1,3 @@
----
-"$schema": "https://json.schemastore.org/github-workflow.json"
 name: Build and Publish Docker Image
 
 on:
@@ -27,8 +25,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build para amd64 (Linux standard) — removemos multi-arch temporariamente para evitar falhas
-      - name: Build and push Docker image (amd64)
+      - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -37,20 +34,3 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/appfidelidade:latest
           platforms: linux/amd64
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/appfidelidade:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/appfidelidade:buildcache,mode=max
-
-      - name: Deploy to Railway (if secrets provided)
-        if: ${{ env.RAILWAY_TOKEN != '' }}
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          IMAGE: ghcr.io/${{ github.repository_owner }}/appfidelidade:latest
-        run: |
-          [ -n "$RAILWAY_TOKEN" ] || { echo "Pulando Railway deploy (secrets não configurados)"; exit 0; }
-          echo "Instalando Railway CLI..."
-          npm i -g @railway/cli
-          echo "Autenticando no Railway..."
-          railway login --apiKey "$RAILWAY_TOKEN"
-          echo "Acionando redeploy no Railway com a imagem: $IMAGE"
-          railway up --project "$RAILWAY_PROJECT_ID" || echo "Nota: railway up pode requerer configuração manual do serviço no painel"
