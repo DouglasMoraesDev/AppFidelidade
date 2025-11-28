@@ -31,6 +31,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/appfidelidade:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/appfidelidade:latest
+            ghcr.io/douglasmoraesdev/appfidelidade:${{ github.sha }}
+            ghcr.io/douglasmoraesdev/appfidelidade:latest
           platforms: linux/amd64
+
