@@ -306,7 +306,7 @@ const App: React.FC = () => {
     // Zera os pontos do cliente
     setLoggedInEstablishment(prev => prev ? {
       ...prev,
-      clients: prev.clients.map(c => c.id === clientId ? { ...c, points: 0 } : c),
+      clients: prev.clients.map(c => c.id === clientId ? { ...c, points: 0, lastVoucherSent: new Date().toISOString() } : c),
       totalVouchersSent: prev.totalVouchersSent + 1
     } : prev);
     

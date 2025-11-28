@@ -3,5 +3,19 @@
     "https://json.schemastore.org/github-workflow.json": "./.github/workflows/*"
   },
   "yaml.validate": true,
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  // Auto-save files after short delay to avoid manual save prompts
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 800,
+
+  // Git convenience settings to reduce prompts
+  "git.autofetch": true,
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.suggestSmartCommit": false,
+
+  // Editor suggestions/format on save
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  }
 }

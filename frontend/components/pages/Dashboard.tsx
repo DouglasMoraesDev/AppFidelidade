@@ -28,8 +28,11 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, vouch
     .filter(c => c.lastPointAddition && (new Date().getTime() - new Date(c.lastPointAddition).getTime()) < 24 * 60 * 60 * 1000)
     .sort((a, b) => new Date(b.lastPointAddition!).getTime() - new Date(a.lastPointAddition!).getTime());
 
-  // Simular vouchers recentes (essa informação poderia vir da API futura)
-  const vouchersRecentes: Array<{ id: string; clientName: string; timestamp: Date }> = [];
+  // Vouchers enviados recentemente (a partir do campo lastVoucherSent em cada cliente)
+  const vouchersRecentes = clients
+    .filter(c => c.lastVoucherSent)
+    .map(c => ({ id: c.id, clientName: c.name, phone: c.phone, timestamp: new Date(c.lastVoucherSent!) }))
+    .sort((a, b) => +b.timestamp - +a.timestamp);
 
   const clientesComVoucher = clients.filter(c => c.points >= voucherThreshold);
   const clienteTopVoucher = clientesComVoucher.length > 0 
@@ -58,6 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, vouch
                 <li key={voucher.id} className="p-4 flex justify-between items-center hover:bg-background/50">
                   <div>
                     <p className="font-semibold text-on-surface">{voucher.clientName}</p>
+                    <p className="text-sm text-on-surface-secondary">{voucher.phone}</p>
                   </div>
                   <span className="text-sm text-on-surface-secondary">
                     {voucher.timestamp.toLocaleString()}
