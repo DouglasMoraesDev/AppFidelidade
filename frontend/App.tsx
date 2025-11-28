@@ -19,6 +19,7 @@ import SuperAdminDashboard from './components/pages/SuperAdminDashboard';
 import SuperAdminEstablishments from './components/pages/SuperAdminEstablishments';
 import SuperAdminThemeSettings from './components/pages/SuperAdminThemeSettings';
 import TelaPontosPublica from './src/components/TelaPontosPublica';
+import VoucherConfirmationModal from './components/VoucherConfirmationModal';
 
 import {
   login as apiLogin,
@@ -68,6 +69,7 @@ const App: React.FC = () => {
   const [superAdminMetrics, setSuperAdminMetrics] = useState<{ estabelecimentos: number; clientes: number; vouchers: number; inadimplentes: number } | null>(null);
   const [superAdminSecret, setSuperAdminSecret] = useState<string | null>(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
+  const [pendingVoucher, setPendingVoucher] = useState<{ clientId: string; clientName: string; whatsappUrl: string } | null>(null);
 
   const isPublicConsultaPage = useMemo(
     () => {
@@ -271,32 +273,49 @@ const App: React.FC = () => {
     }
     try {
       const resp = await enviarVoucher({ cartaoId: Number(client.cartaoId) });
-      if (resp?.cartao) {
-        const atualizado = mapApiClientToLocal({
-          id: resp.cartao.id,
-          clienteId: resp.cartao.clienteId,
-          name: resp.cartao.cliente.nome,
-          phone: resp.cartao.cliente.telefone,
-          points: resp.cartao.pontos,
-          lastPointAddition: resp.cartao.movimentos?.[0]?.criadoEm
-        });
-        setLoggedInEstablishment(prev => prev ? {
-          ...prev,
-          clients: prev.clients.map(c => c.id === atualizado.id ? atualizado : c),
-          totalVouchersSent: prev.totalVouchersSent + 1
-        } : prev);
-      }
-
+      
+      // Armazena o voucher pendente para confirmação
       if (resp?.whatsapp) {
         const numeroLimpo = String(resp.whatsapp.numero || '').replace(/\D/g, '');
         const numero = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
-        const url = `https://wa.me/${numero}?text=${encodeURIComponent(resp.whatsapp.mensagem)}`;
-        window.open(url, '_blank');
+        const whatsappUrl = `https://wa.me/${numero}?text=${encodeURIComponent(resp.whatsapp.mensagem)}`;
+        
+        setPendingVoucher({
+          clientId,
+          clientName: client.name,
+          whatsappUrl
+        });
+        
+        // Abre o WhatsApp
+        window.open(whatsappUrl, '_blank');
+      } else {
+        // Se não tem WhatsApp, confirma automaticamente
+        confirmVoucherSent(clientId);
       }
     } catch (err: any) {
       alert(err?.message || 'Erro ao enviar voucher');
     }
   }, [loggedInEstablishment]);
+
+  const confirmVoucherSent = useCallback((clientId: string) => {
+    const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    // Zera os pontos do cliente
+    setLoggedInEstablishment(prev => prev ? {
+      ...prev,
+      clients: prev.clients.map(c => c.id === clientId ? { ...c, points: 0 } : c),
+      totalVouchersSent: prev.totalVouchersSent + 1
+    } : prev);
+    
+    setPendingVoucher(null);
+    alert(`Voucher confirmado para ${client.name}! Pontos resetados.`);
+  }, [loggedInEstablishment]);
+
+  const cancelVoucherSent = useCallback(() => {
+    setPendingVoucher(null);
+    alert('Voucher não confirmado. Os pontos do cliente foram mantidos.');
+  }, []);
 
   const handleLogoUpload = useCallback(async (file: File) => {
     try {
@@ -535,34 +554,49 @@ const App: React.FC = () => {
     return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;
   }
 
-  switch (currentView) {
-    case 'chooser':
-      return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
-    case 'establishmentAuth':
-      if (authPage === 'register') {
-        return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
-      }
-      return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} loading={loadingSnapshot} />;
-    case 'superAdminAuth':
-      return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
-    case 'establishmentApp':
-      if (!loggedInEstablishment) {
-        return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;
-      }
-      return (
-        <Layout currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout}>
-          {renderEstablishmentPage()}
-        </Layout>
-      );
-    case 'superAdminApp':
-      return (
-        <SuperAdminLayout currentPage={currentSuperAdminPage} setCurrentPage={setCurrentSuperAdminPage} onLogout={handleSuperAdminLogout}>
-          {renderSuperAdminPage()}
-        </SuperAdminLayout>
-      );
-    default:
-      return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
-  }
+  const renderView = () => {
+    switch (currentView) {
+      case 'chooser':
+        return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+      case 'establishmentAuth':
+        if (authPage === 'register') {
+          return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
+        }
+        return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} loading={loadingSnapshot} />;
+      case 'superAdminAuth':
+        return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
+      case 'establishmentApp':
+        if (!loggedInEstablishment) {
+          return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;
+        }
+        return (
+          <Layout currentPage={currentPage} setCurrentPage={setCurrentPage} onLogout={handleLogout}>
+            {renderEstablishmentPage()}
+          </Layout>
+        );
+      case 'superAdminApp':
+        return (
+          <SuperAdminLayout currentPage={currentSuperAdminPage} setCurrentPage={setCurrentSuperAdminPage} onLogout={handleSuperAdminLogout}>
+            {renderSuperAdminPage()}
+          </SuperAdminLayout>
+        );
+      default:
+        return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+    }
+  };
+
+  return (
+    <>
+      {renderView()}
+      {pendingVoucher && (
+        <VoucherConfirmationModal
+          clientName={pendingVoucher.clientName}
+          onConfirm={() => confirmVoucherSent(pendingVoucher.clientId)}
+          onCancel={cancelVoucherSent}
+        />
+      )}
+    </>
+  );
 };
 
 export default App;
