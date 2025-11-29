@@ -296,7 +296,7 @@ const App: React.FC = () => {
     const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
     if (!client) return;
     try {
-      const resp = await adicionarPontos({ cartaoId: client.cartaoId, pontos: pointsToAdd, descricao: 'Pontos adicionados' });
+      const resp = await adicionarPontos({ cartaoId: Number(client.cartaoId), pontos: pointsToAdd, descricao: 'Pontos adicionados' });
       if (resp?.cartao) {
         const atualizado = mapApiClientToLocal({
           id: resp.cartao.id,
