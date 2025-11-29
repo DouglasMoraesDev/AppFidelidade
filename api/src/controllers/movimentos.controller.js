@@ -15,7 +15,10 @@ async function criarMovimento(req, res) {
 
     const cartao = await prisma.cartaoFidelidade.findUnique({
       where: { id: Number(cartaoId) },
-      include: { cliente: true }
+      include: {
+        cliente: true,
+        estabelecimento: { select: { pontos_para_voucher: true } }
+      }
     });
 
     if (!cartao) return res.status(404).json({ error: 'Cartão não encontrado' });
@@ -25,19 +28,31 @@ async function criarMovimento(req, res) {
 
     const pts = Number(pontos);
 
+    // Limite definido pelo estabelecimento (pontos necessários para voucher)
+    const pontosNecessarios = (cartao.estabelecimento && cartao.estabelecimento.pontos_para_voucher) ? Number(cartao.estabelecimento.pontos_para_voucher) : 10;
+
+    // Se já alcançou ou excedeu, não permite adicionar mais até voucher ser enviado
+    if (cartao.pontos >= pontosNecessarios) {
+      return res.status(400).json({ error: 'Cliente já atingiu o limite de pontos para voucher. Envie o voucher antes de adicionar mais pontos.' });
+    }
+
+    // Se a adição excede o limite, faz adição parcial até atingir o limite
+    const maxAddable = pontosNecessarios - cartao.pontos;
+    const toAdd = pts > maxAddable ? maxAddable : pts;
+
     const resultado = await prisma.$transaction(async (tx) => {
       const movimento = await tx.movimento.create({
         data: {
           cartaoId: cartao.id,
           tipo: 'credito',
-          pontos: pts,
-          descricao: descricao || 'Pontos adicionados'
+          pontos: toAdd,
+          descricao: descricao || (toAdd < pts ? `Pontos adicionados (parcial, máximo ${pontosNecessarios})` : 'Pontos adicionados')
         }
       });
 
       const cartaoAtualizado = await tx.cartaoFidelidade.update({
         where: { id: cartao.id },
-        data: { pontos: { increment: pts } },
+        data: { pontos: { increment: toAdd } },
         include: {
           cliente: true,
           movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 }
@@ -47,7 +62,8 @@ async function criarMovimento(req, res) {
       return { movimento, cartao: cartaoAtualizado };
     });
 
-    return res.status(201).json(resultado);
+    const note = toAdd < pts ? `Apenas ${toAdd} pontos foram adicionados para não exceder o limite de ${pontosNecessarios} pontos.` : undefined;
+    return res.status(201).json({ ...resultado, note });
   } catch (err) {
     console.error('[Mov] erro criarMovimento:', err && err.stack ? err.stack : err);
     if (err.code === 'MENSALIDADE_VENCIDA') {
