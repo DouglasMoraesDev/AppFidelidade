@@ -46,7 +46,7 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints, voucherThre
         <p className="text-on-surface-secondary">Pesquise por um cliente para creditar pontos.</p>
       </div>
 
-      <div className="max-w-lg mx-auto">
+      <div className="w-full px-4 sm:max-w-lg mx-auto">
         <div className="relative">
           <input
             type="text"
@@ -69,19 +69,19 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints, voucherThre
         </div>
 
         {selectedClient && (
-          <div className="mt-8 bg-surface p-6 rounded-lg shadow-lg text-center animate-fade-in">
+          <div className="mt-8 bg-surface p-4 sm:p-6 rounded-lg shadow-lg text-center animate-fade-in mx-0 sm:mx-auto">
             <UserCircleIcon className="w-20 h-20 mx-auto text-on-surface-secondary mb-4" />
             <h2 className="text-2xl font-bold">{selectedClient.name}</h2>
             <p className="text-on-surface-secondary">Pontos atuais: {selectedClient.points} / {voucherThreshold}</p>
             
-              <div className="mt-6 flex items-center justify-center gap-4">
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4 w-full">
               <label htmlFor="points" className="font-medium">Pontos a adicionar:</label>
               <input
                 id="points"
                 type="number"
                 min="1"
                 max={voucherThreshold - selectedClient.points}
-                className="w-24 bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-center"
+                className="w-full sm:w-24 max-w-xs bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-center"
                 value={pointsToAdd}
                 onChange={e => {
                   const val = Math.max(1, parseInt(e.target.value) || 1);
