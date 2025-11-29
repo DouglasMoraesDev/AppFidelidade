@@ -92,15 +92,25 @@ const App: React.FC = () => {
     root.style.setProperty('--font-family', theme.fontFamily);
   }, [theme]);
 
-  const mapApiClientToLocal = (apiClient: any): Client => ({
-    id: String(apiClient.id),
-    cartaoId: Number(apiClient.id),
-    clienteId: Number(apiClient.clienteId),
-    name: apiClient.name || apiClient.cliente?.nome || '',
-    phone: apiClient.phone || apiClient.cliente?.telefone || '',
-    points: apiClient.points ?? apiClient.pontos ?? 0,
-    lastPointAddition: apiClient.lastPointAddition || apiClient.movimentos?.[0]?.criadoEm || null
-  });
+  const mapApiClientToLocal = (apiClient: any): Client => {
+    // Garante que cartaoId seja um número válido
+    const cartaoIdNum = Number(apiClient.id || apiClient.cartaoId || 0);
+    const finalCartaoId = Number.isFinite(cartaoIdNum) && cartaoIdNum > 0 ? cartaoIdNum : 0;
+    
+    if (!Number.isFinite(finalCartaoId) || finalCartaoId <= 0) {
+      console.warn('[mapApiClientToLocal] cartaoId inválido:', { id: apiClient.id, cartaoId: apiClient.cartaoId, finalCartaoId });
+    }
+    
+    return {
+      id: String(finalCartaoId),
+      cartaoId: finalCartaoId,
+      clienteId: Number(apiClient.clienteId || 0),
+      name: apiClient.name || apiClient.cliente?.nome || '',
+      phone: apiClient.phone || apiClient.cliente?.telefone || '',
+      points: apiClient.points ?? apiClient.pontos ?? 0,
+      lastPointAddition: apiClient.lastPointAddition || apiClient.movimentos?.[0]?.criadoEm || null
+    };
+  };
 
   const mapSnapshotToEstablishment = (snapshot: any): Establishment => {
     const paymentHistory: Payment[] = (snapshot.pagamentos || []).map((p: any) => ({
@@ -294,9 +304,29 @@ const App: React.FC = () => {
 
   const addPointsToClient = useCallback(async (clientId: string, pointsToAdd: number) => {
     const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
-    if (!client) return;
+    if (!client) {
+      console.error('[addPointsToClient] Cliente não encontrado:', clientId);
+      alert('Cliente não encontrado');
+      return;
+    }
+
+    // Valida dados antes de chamar API
+    const cartaoIdNum = Number(client.cartaoId);
+    if (!Number.isFinite(cartaoIdNum) || cartaoIdNum <= 0) {
+      console.error('[addPointsToClient] cartaoId inválido:', { client, cartaoIdNum });
+      alert(`Erro: cartaoId inválido (${client.cartaoId})`);
+      return;
+    }
+
+    if (!Number.isFinite(pointsToAdd) || pointsToAdd <= 0) {
+      console.error('[addPointsToClient] pontos inválido:', pointsToAdd);
+      alert('Erro: pontos deve ser maior que zero');
+      return;
+    }
+
     try {
-      const resp = await adicionarPontos({ cartaoId: Number(client.cartaoId), pontos: pointsToAdd, descricao: 'Pontos adicionados' });
+      console.log('[addPointsToClient] Enviando:', { cartaoId: cartaoIdNum, pontos: pointsToAdd });
+      const resp = await adicionarPontos({ cartaoId: cartaoIdNum, pontos: pointsToAdd, descricao: 'Pontos adicionados' });
       if (resp?.cartao) {
         const atualizado = mapApiClientToLocal({
           id: resp.cartao.id,
@@ -317,6 +347,7 @@ const App: React.FC = () => {
       }
       setCurrentPage('clients');
     } catch (err: any) {
+      console.error('[addPointsToClient] Erro:', err);
       alert(err?.message || String(err) || 'Erro ao adicionar pontos');
     }
   }, [loggedInEstablishment]);
