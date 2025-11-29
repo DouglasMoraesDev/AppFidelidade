@@ -20,6 +20,7 @@ import SuperAdminEstablishments from './components/pages/SuperAdminEstablishment
 import SuperAdminThemeSettings from './components/pages/SuperAdminThemeSettings';
 import TelaPontosPublica from './src/components/TelaPontosPublica';
 import VoucherConfirmationModal from './components/VoucherConfirmationModal';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 import {
   login as apiLogin,
@@ -645,6 +646,7 @@ const App: React.FC = () => {
 
   return (
     <>
+      <PWAInstallPrompt />
       {renderView()}
       {pendingVoucher && (
         <VoucherConfirmationModal

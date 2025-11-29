@@ -29,6 +29,16 @@
       body {
         font-family: var(--font-family);
       }
+      @keyframes slide-in {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
     </style>
     <script>
       tailwind.config = {
@@ -45,6 +55,21 @@
             },
             fontFamily: {
               sans: ['var(--font-family)', 'sans-serif'],
+            },
+            animation: {
+              'slide-in': 'slide-in 0.3s ease-out',
+            },
+            keyframes: {
+              'slide-in': {
+                'from': {
+                  transform: 'translateX(100%)',
+                  opacity: '0'
+                },
+                'to': {
+                  transform: 'translateX(0)',
+                  opacity: '1'
+                }
+              }
             }
           },
         },

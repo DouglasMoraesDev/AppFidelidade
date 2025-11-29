@@ -1,5 +1,5 @@
 {
-  "name": "AppFidelidade",
+  "name": "AppFidelidade - Programa de Fidelidade",
   "short_name": "AppFidelidade",
   "description": "Sistema de cartão de fidelidade. Gerencie clientes, pontos, vouchers e recompensas com facilidade.",
   "start_url": "/",
@@ -26,6 +26,12 @@
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "maskable"
+    },
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ],
   "categories": ["business", "productivity"],
@@ -39,6 +45,34 @@
       "src": "/logo.svg",
       "sizes": "1280x720",
       "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Clientes",
+      "short_name": "Clientes",
+      "description": "Visualizar e gerenciar clientes",
+      "url": "/?page=clients",
+      "icons": [
+        {
+          "src": "/logo.svg",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Adicionar Pontos",
+      "short_name": "Pontos",
+      "description": "Adicionar pontos para cliente",
+      "url": "/?page=addpoints",
+      "icons": [
+        {
+          "src": "/logo.svg",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }
