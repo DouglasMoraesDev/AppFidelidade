@@ -7,14 +7,16 @@ async function criarMovimento(req, res) {
     if (!estabelecimentoId) return res.status(401).json({ error: 'Estabelecimento não identificado' });
 
     const { cartaoId, pontos, descricao } = req.body;
-    if (!cartaoId || typeof pontos === 'undefined') return res.status(400).json({ error: 'cartaoId e pontos são obrigatórios' });
-
-    if (Number(pontos) <= 0) return res.status(400).json({ error: 'Informe pontos maiores que zero' });
+    const cartaoIdNum = Number(cartaoId);
+    const pontosNum = Number(pontos);
+    
+    if (!Number.isFinite(cartaoIdNum) || cartaoIdNum <= 0) return res.status(400).json({ error: 'cartaoId inválido' });
+    if (!Number.isFinite(pontosNum) || pontosNum <= 0) return res.status(400).json({ error: 'pontos deve ser um número maior que zero' });
 
     await assertMensalidadeAtiva(estabelecimentoId);
 
     const cartao = await prisma.cartaoFidelidade.findUnique({
-      where: { id: Number(cartaoId) },
+      where: { id: cartaoIdNum },
       include: {
         cliente: true,
         estabelecimento: { select: { pontos_para_voucher: true } }
@@ -26,7 +28,7 @@ async function criarMovimento(req, res) {
       return res.status(403).json({ error: 'Cartão não pertence ao seu estabelecimento' });
     }
 
-    const pts = Number(pontos);
+    const pts = pontosNum;
 
     // Limite definido pelo estabelecimento (pontos necessários para voucher)
     const pontosNecessarios = (cartao.estabelecimento && cartao.estabelecimento.pontos_para_voucher) ? Number(cartao.estabelecimento.pontos_para_voucher) : 10;

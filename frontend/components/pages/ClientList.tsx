@@ -120,7 +120,7 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
             <h2 className="text-2xl font-bold">Editar Cliente</h2>
             <input name="name" value={editingClient.name} onChange={handleEditChange} className="w-full bg-background p-2 rounded-md" placeholder="Nome do Cliente" />
             <input name="phone" value={editingClient.phone} onChange={handleEditChange} className="w-full bg-background p-2 rounded-md" placeholder="Telefone do Cliente"/>
-            <input type="number" name="points" value={editingClient.points} onChange={e => setEditingClient({...editingClient, points: parseInt(e.target.value) || 0})} className="w-full bg-background p-2 rounded-md" />
+            <input type="number" name="points" value={editingClient.points} onChange={e => setEditingClient({...editingClient, points: Math.max(0, parseInt(e.target.value) || 0)})} className="w-full bg-background p-2 rounded-md" placeholder="Pontos" />
             {modalError && <p className="text-red-400 text-sm text-center">{modalError}</p>}
             <div className="flex justify-end gap-4 pt-4">
               <button onClick={handleCancel} className="px-4 py-2 rounded-md bg-slate-500 hover:bg-slate-600 transition-colors">Cancelar</button>

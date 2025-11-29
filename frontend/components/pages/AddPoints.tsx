@@ -29,11 +29,14 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints, voucherThre
   };
 
   const handleAddPoints = () => {
-    if (selectedClient && pointsToAdd > 0) {
-      onAddPoints(selectedClient.id, pointsToAdd);
-      setSelectedClient(null);
-      setPointsToAdd(1);
+    if (!selectedClient) return;
+    if (pointsToAdd <= 0) {
+      alert('Pontos deve ser maior que zero');
+      return;
     }
+    onAddPoints(selectedClient.id, pointsToAdd);
+    setSelectedClient(null);
+    setPointsToAdd(1);
   };
 
   return (
@@ -77,9 +80,14 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints, voucherThre
                 id="points"
                 type="number"
                 min="1"
+                max={voucherThreshold - selectedClient.points}
                 className="w-24 bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-center"
                 value={pointsToAdd}
-                onChange={e => setPointsToAdd(parseInt(e.target.value, 10) || 1)}
+                onChange={e => {
+                  const val = Math.max(1, parseInt(e.target.value) || 1);
+                  const maxAddable = voucherThreshold - selectedClient.points;
+                  setPointsToAdd(Math.min(val, maxAddable));
+                }}
               />
             </div>
 
