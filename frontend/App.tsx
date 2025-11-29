@@ -262,11 +262,17 @@ const App: React.FC = () => {
       if (!resp?.cliente) return;
       const novoCliente = mapApiClientToLocal(resp.cliente);
       setLoggedInEstablishment(prev => prev ? { ...prev, clients: [novoCliente, ...prev.clients] } : prev);
+      // Recarrega snapshot para garantir estado consistente
+      try {
+        await refreshSnapshot();
+      } catch (e) {
+        console.error('[addClient] falha ao recarregar snapshot', e);
+      }
       setCurrentPage('clients');
     } catch (err: any) {
       alert(err?.message || 'Erro ao cadastrar cliente');
     }
-  }, []);
+  }, [refreshSnapshot]);
 
   const updateClient = useCallback(async (updatedClient: Client) => {
     if (!updatedClient.cartaoId) return;
@@ -277,15 +283,21 @@ const App: React.FC = () => {
         pontos: updatedClient.points
       });
       if (resp?.cliente) {
+        // Atualiza local e recarrega snapshot para consistência
         setLoggedInEstablishment(prev => prev ? {
           ...prev,
           clients: prev.clients.map(c => c.id === updatedClient.id ? resp.cliente : c)
         } : prev);
+        try {
+          await refreshSnapshot();
+        } catch (e) {
+          console.error('[updateClient] falha ao recarregar snapshot', e);
+        }
       }
     } catch (err: any) {
       alert(err?.message || 'Erro ao atualizar cliente');
     }
-  }, []);
+  }, [refreshSnapshot]);
 
   const deleteClient = useCallback(async (clientId: string) => {
     const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
@@ -297,10 +309,15 @@ const App: React.FC = () => {
         ...prev,
         clients: prev.clients.filter(c => c.id !== clientId)
       } : prev);
+      try {
+        await refreshSnapshot();
+      } catch (e) {
+        console.error('[deleteClient] falha ao recarregar snapshot', e);
+      }
     } catch (err: any) {
       alert(err?.message || 'Erro ao deletar cliente');
     }
-  }, [loggedInEstablishment]);
+  }, [loggedInEstablishment, refreshSnapshot]);
 
   const addPointsToClient = useCallback(async (clientId: string, pointsToAdd: number) => {
     const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
@@ -344,6 +361,12 @@ const App: React.FC = () => {
       // mostrar nota informativa quando backend adicionou parcialmente
       if (resp?.note) {
         alert(String(resp.note));
+      }
+      // Recarrega snapshot para garantir estado atualizado
+      try {
+        await refreshSnapshot();
+      } catch (e) {
+        console.error('[addPointsToClient] falha ao recarregar snapshot', e);
       }
       setCurrentPage('clients');
     } catch (err: any) {
