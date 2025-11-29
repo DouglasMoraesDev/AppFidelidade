@@ -311,9 +311,13 @@ const App: React.FC = () => {
           clients: prev.clients.map(c => c.id === atualizado.id ? atualizado : c)
         } : prev);
       }
+      // mostrar nota informativa quando backend adicionou parcialmente
+      if (resp?.note) {
+        alert(String(resp.note));
+      }
       setCurrentPage('clients');
     } catch (err: any) {
-      alert(err?.message || 'Erro ao adicionar pontos');
+      alert(err?.message || String(err) || 'Erro ao adicionar pontos');
     }
   }, [loggedInEstablishment]);
 
@@ -553,7 +557,7 @@ const App: React.FC = () => {
       case 'addClient':
         return <AddClient onAddClient={addClient} />;
       case 'addPoints':
-        return <AddPoints clients={loggedInEstablishment.clients} onAddPoints={addPointsToClient} />;
+        return <AddPoints clients={loggedInEstablishment.clients} onAddPoints={addPointsToClient} voucherThreshold={loggedInEstablishment.pointsForVoucher || loggedInEstablishment.pointsForVoucher === 0 ? loggedInEstablishment.pointsForVoucher : 10} />;
       case 'notifications':
         return <Notifications clients={loggedInEstablishment.clients} onSendVoucher={sendVoucher} voucherThreshold={loggedInEstablishment.pointsForVoucher} />;
       case 'settings':

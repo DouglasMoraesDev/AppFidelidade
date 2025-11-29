@@ -7,9 +7,10 @@ import { PlusIcon, UserCircleIcon } from '../icons/Icons';
 interface AddPointsProps {
   clients: Client[];
   onAddPoints: (clientId: string, points: number) => void;
+  voucherThreshold?: number;
 }
 
-const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints }) => {
+const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints, voucherThreshold = 10 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [pointsToAdd, setPointsToAdd] = useState(1);
@@ -68,9 +69,9 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints }) => {
           <div className="mt-8 bg-surface p-6 rounded-lg shadow-lg text-center animate-fade-in">
             <UserCircleIcon className="w-20 h-20 mx-auto text-on-surface-secondary mb-4" />
             <h2 className="text-2xl font-bold">{selectedClient.name}</h2>
-            <p className="text-on-surface-secondary">Pontos atuais: {selectedClient.points}</p>
+            <p className="text-on-surface-secondary">Pontos atuais: {selectedClient.points} / {voucherThreshold}</p>
             
-            <div className="mt-6 flex items-center justify-center gap-4">
+              <div className="mt-6 flex items-center justify-center gap-4">
               <label htmlFor="points" className="font-medium">Pontos a adicionar:</label>
               <input
                 id="points"
@@ -84,11 +85,15 @@ const AddPoints: React.FC<AddPointsProps> = ({ clients, onAddPoints }) => {
 
             <button
               onClick={handleAddPoints}
-              className="mt-6 w-full flex items-center justify-center gap-2 bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-colors"
+              disabled={selectedClient.points >= voucherThreshold}
+              className={`mt-6 w-full flex items-center justify-center gap-2 ${selectedClient.points >= voucherThreshold ? 'bg-slate-700 text-on-surface-secondary cursor-not-allowed' : 'bg-primary text-white hover:bg-primary-focus'} font-bold py-3 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-colors`}
             >
               <PlusIcon className="w-5 h-5"/>
-              Adicionar {pointsToAdd} Ponto(s)
+              {selectedClient.points >= voucherThreshold ? 'Limite atingido' : `Adicionar ${pointsToAdd} Ponto(s)`}
             </button>
+            {selectedClient.points >= voucherThreshold && (
+              <p className="text-sm text-red-400 mt-2">Cliente já atingiu o limite de pontos para voucher ({voucherThreshold}). Envie o voucher antes de adicionar mais pontos.</p>
+            )}
              <button
               onClick={() => setSelectedClient(null)}
               className="mt-2 w-full text-sm text-on-surface-secondary hover:text-on-surface"
