@@ -10,7 +10,6 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   StarIcon,
-  CalendarIcon,
   PhotoIcon
 } from '../icons/Icons';
 import { postEstabelecimento, login as apiLogin } from '../../utils/api';
@@ -23,7 +22,6 @@ type RegisterData = {
   email?: string;
   voucherMessage?: string;
   pointsForVoucher: number;
-  lastPaymentDate: string;
   username: string;
   password: string;
 };
@@ -42,7 +40,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     email: '',
     voucherMessage: 'Parabéns, {cliente}! Você ganhou um brinde especial!',
     pointsForVoucher: 10,
-    lastPaymentDate: new Date().toISOString().split('T')[0],
     username: '',
     password: '',
   });
@@ -61,7 +58,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     if (!formData.password) newErrors.password = 'Senha é obrigatória.';
     if (formData.password && formData.password.length < 6) newErrors.password = 'A senha deve ter no mínimo 6 caracteres.';
     if (formData.password !== confirmPassword) newErrors.confirmPassword = 'As senhas não coincidem.';
-    if (!formData.lastPaymentDate) newErrors.lastPaymentDate = 'A data do 1º pagamento é obrigatória.';
     if (Number(formData.pointsForVoucher) <= 0) newErrors.pointsForVoucher = 'Pontos para voucher deve ser maior que zero.';
     if (!logoFile) newErrors.logo = 'O logo é obrigatório.';
     setErrors(newErrors);
@@ -141,7 +137,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
           email: createdEstab.email || formData.email,
           voucherMessage: createdEstab.mensagem_voucher || formData.voucherMessage,
           pointsForVoucher: formData.pointsForVoucher,
-          lastPaymentDate: formData.lastPaymentDate,
           username: formData.username,
           password: formData.password,
         };
@@ -192,14 +187,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
               <p className="text-xs text-on-surface-secondary mt-1">Use {'{cliente}'} para o nome do cliente.</p>
             </div>
 
+            <div className="mb-4 p-3 bg-background/40 rounded">
+              <p className="text-sm text-on-surface-secondary">
+                Ao criar sua conta, você receberá <strong>31 dias de teste gratuito</strong>. Após este período, será cobrada mensalmente a partir da data de cadastro o valor de <strong>R$ 29,90</strong> por mês. Você poderá pagar a qualquer momento na tela de pagamentos.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div className="md:col-span-1">
                 <InputField id="pointsForVoucher" label="Pontos para Voucher * (apenas frontend)" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
                 {errors.pointsForVoucher && <p className="text-red-400 text-xs mt-1">{errors.pointsForVoucher}</p>}
-              </div>
-              <div>
-                <InputField id="lastPaymentDate" label="Data do 1º Pagamento *" type="date" value={formData.lastPaymentDate} onChange={(e) => setFormData(prev => ({ ...prev, lastPaymentDate: e.target.value }))} icon={<CalendarIcon className="h-5 w-5 text-on-surface-secondary" />} />
-                {errors.lastPaymentDate && <p className="text-red-400 text-xs mt-1">{errors.lastPaymentDate}</p>}
               </div>
             </div>
 
