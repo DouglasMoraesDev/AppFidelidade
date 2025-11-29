@@ -208,7 +208,10 @@ async function snapshot(req, res) {
         logo_path: true,
         slug_publico: true,
         link_consulta: true,
-        nome_app: true
+        nome_app: true,
+        tema_config: true,
+        auto_notificar_voucher: true,
+        lembrete_pontos_proximos: true
       }
     });
 
@@ -317,7 +320,7 @@ async function atualizarConfiguracoes(req, res) {
     const estabelecimentoId = req.estabelecimentoId || (req.user && req.user.estabelecimentoId);
     if (!estabelecimentoId) return res.status(401).json({ error: 'Estabelecimento não encontrado no token' });
 
-    const { mensagem_voucher, nome_app, pontos_para_voucher, link_consulta } = req.body;
+    const { mensagem_voucher, nome_app, pontos_para_voucher, link_consulta, tema_config, auto_notificar_voucher, lembrete_pontos_proximos } = req.body;
 
     const dataUpdate = {};
     if (typeof mensagem_voucher === 'string') dataUpdate.mensagem_voucher = mensagem_voucher;
@@ -330,6 +333,17 @@ async function atualizarConfiguracoes(req, res) {
       }
       dataUpdate.pontos_para_voucher = pontos;
     }
+    if (typeof tema_config === 'string') {
+      try {
+        // Validar que é JSON válido
+        JSON.parse(tema_config);
+        dataUpdate.tema_config = tema_config;
+      } catch (e) {
+        return res.status(400).json({ error: 'tema_config deve ser um JSON válido' });
+      }
+    }
+    if (typeof auto_notificar_voucher === 'boolean') dataUpdate.auto_notificar_voucher = auto_notificar_voucher;
+    if (typeof lembrete_pontos_proximos === 'boolean') dataUpdate.lembrete_pontos_proximos = lembrete_pontos_proximos;
 
     const estabelecimento = await prisma.estabelecimento.update({
       where: { id: Number(estabelecimentoId) },
@@ -341,7 +355,10 @@ async function atualizarConfiguracoes(req, res) {
         pontos_para_voucher: true,
         nome_app: true,
         link_consulta: true,
-        slug_publico: true
+        slug_publico: true,
+        tema_config: true,
+        auto_notificar_voucher: true,
+        lembrete_pontos_proximos: true
       }
     });
 

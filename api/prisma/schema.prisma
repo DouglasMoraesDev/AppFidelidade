@@ -24,6 +24,9 @@ model Estabelecimento {
   nome_app         String   @default("AppFidelidade")
   slug_publico     String   @unique
   link_consulta    String?
+  tema_config      String?   @db.Text
+  auto_notificar_voucher Boolean @default(false)
+  lembrete_pontos_proximos Boolean @default(false)
   createdAt        DateTime @default(now())
 
   usuarios Usuario[]

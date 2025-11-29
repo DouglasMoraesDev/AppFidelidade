@@ -1,19 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { LockClosedIcon, DocumentDownloadIcon, DocumentTextIcon, LogoutIcon, PhotoIcon, ClipboardDocumentIcon, QrCodeIcon } from '../icons/Icons';
 
+import { Theme } from '../../types';
+
 interface SettingsProps {
   logoUrl: string;
   appName: string;
   voucherMessage: string;
   publicLink: string;
   slug?: string;
+  currentTheme?: Theme;
+  autoNotificarVoucher?: boolean;
+  lembretePontosProximos?: boolean;
   onLogoUpload: (file: File) => void;
-  onConfigSave: (payload: { mensagem_voucher?: string; nome_app?: string; link_consulta?: string }) => void;
+  onConfigSave: (payload: { 
+    mensagem_voucher?: string; 
+    nome_app?: string; 
+    link_consulta?: string;
+    tema_config?: string;
+    auto_notificar_voucher?: boolean;
+    lembrete_pontos_proximos?: boolean;
+  }) => void;
   onPasswordChange: (currentPassword: string, newPassword: string) => void;
   onDownloadBackup: () => void;
   lastPaymentDate?: string;
   onLogout: () => void;
 }
+
+const fonts = [
+  { name: 'Inter', value: "'Inter', sans-serif" },
+  { name: 'Roboto', value: "'Roboto', sans-serif" },
+  { name: 'Lato', value: "'Lato', sans-serif" },
+  { name: 'Open Sans', value: "'Open Sans', sans-serif" },
+];
 
 const Settings: React.FC<SettingsProps> = ({
   logoUrl,
@@ -21,6 +40,9 @@ const Settings: React.FC<SettingsProps> = ({
   voucherMessage,
   publicLink,
   slug,
+  currentTheme,
+  autoNotificarVoucher = false,
+  lembretePontosProximos = false,
   onLogoUpload,
   onConfigSave,
   onPasswordChange,
@@ -35,6 +57,17 @@ const Settings: React.FC<SettingsProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [termsOpen, setTermsOpen] = useState(false);
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle');
+  const [localTheme, setLocalTheme] = useState<Theme>(currentTheme || {
+    primary: '#0D9488',
+    primaryFocus: '#0F766E',
+    secondary: '#0891B2',
+    background: '#1E293B',
+    surface: '#334155',
+    fontFamily: "'Inter', sans-serif",
+  });
+  const [autoNotify, setAutoNotify] = useState(autoNotificarVoucher);
+  const [lembretePontos, setLembretePontos] = useState(lembretePontosProximos);
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
 
   useEffect(() => {
     setLocalAppName(appName);
@@ -48,13 +81,36 @@ const Settings: React.FC<SettingsProps> = ({
     setCustomLink(publicLink);
   }, [publicLink]);
 
+  useEffect(() => {
+    if (currentTheme) setLocalTheme(currentTheme);
+  }, [currentTheme]);
+
+  useEffect(() => {
+    setAutoNotify(autoNotificarVoucher);
+  }, [autoNotificarVoucher]);
+
+  useEffect(() => {
+    setLembretePontos(lembretePontosProximos);
+  }, [lembretePontosProximos]);
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) onLogoUpload(e.target.files[0]);
   };
 
   const handleConfigSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfigSave({ nome_app: localAppName, mensagem_voucher: localMessage, link_consulta: customLink });
+    onConfigSave({ 
+      nome_app: localAppName, 
+      mensagem_voucher: localMessage, 
+      link_consulta: customLink,
+      tema_config: JSON.stringify(localTheme),
+      auto_notificar_voucher: autoNotify,
+      lembrete_pontos_proximos: lembretePontos
+    });
+  };
+
+  const handleThemeChange = (field: keyof Theme, value: string) => {
+    setLocalTheme(prev => ({ ...prev, [field]: value }));
   };
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
@@ -119,6 +175,126 @@ const Settings: React.FC<SettingsProps> = ({
             </div>
             <button type="submit" className="w-full bg-primary text-white font-bold py-3 rounded-md hover:bg-primary-focus transition-colors">Salvar Alterações</button>
           </form>
+
+          {/* Configurações de Automação */}
+          <div className="border-t border-background pt-6 mt-6">
+            <h2 className="text-lg font-semibold text-on-surface mb-4">Automações</h2>
+            <div className="space-y-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoNotify}
+                  onChange={(e) => setAutoNotify(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
+                />
+                <div>
+                  <p className="text-on-surface font-medium">Notificar automaticamente quando cliente ganha voucher</p>
+                  <p className="text-xs text-on-surface-secondary">O voucher será enviado automaticamente via WhatsApp quando o cliente atingir os pontos necessários</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={lembretePontos}
+                  onChange={(e) => setLembretePontos(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
+                />
+                <div>
+                  <p className="text-on-surface font-medium">Lembrar clientes próximos do voucher</p>
+                  <p className="text-xs text-on-surface-secondary">Receba notificações quando clientes estiverem próximos de ganhar voucher</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Editor de Tema */}
+          <div className="border-t border-background pt-6 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-on-surface">Personalização de Tema</h2>
+              <button
+                type="button"
+                onClick={() => setShowThemeEditor(!showThemeEditor)}
+                className="text-primary hover:text-primary-focus text-sm font-medium"
+              >
+                {showThemeEditor ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            {showThemeEditor && (
+              <div className="space-y-4 bg-background/60 p-4 rounded-md">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface-secondary mb-1">Cor Primária</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={localTheme.primary}
+                        onChange={(e) => handleThemeChange('primary', e.target.value)}
+                        className="w-12 h-10 rounded border border-slate-600 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={localTheme.primary}
+                        onChange={(e) => handleThemeChange('primary', e.target.value)}
+                        className="flex-1 bg-background text-on-surface p-2 rounded-md border border-slate-600 text-sm"
+                        placeholder="#0D9488"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface-secondary mb-1">Cor Primária (Hover)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={localTheme.primaryFocus}
+                        onChange={(e) => handleThemeChange('primaryFocus', e.target.value)}
+                        className="w-12 h-10 rounded border border-slate-600 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={localTheme.primaryFocus}
+                        onChange={(e) => handleThemeChange('primaryFocus', e.target.value)}
+                        className="flex-1 bg-background text-on-surface p-2 rounded-md border border-slate-600 text-sm"
+                        placeholder="#0F766E"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface-secondary mb-1">Cor Secundária</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="color"
+                        value={localTheme.secondary}
+                        onChange={(e) => handleThemeChange('secondary', e.target.value)}
+                        className="w-12 h-10 rounded border border-slate-600 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={localTheme.secondary}
+                        onChange={(e) => handleThemeChange('secondary', e.target.value)}
+                        className="flex-1 bg-background text-on-surface p-2 rounded-md border border-slate-600 text-sm"
+                        placeholder="#0891B2"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-on-surface-secondary mb-1">Fonte</label>
+                    <select
+                      value={localTheme.fontFamily}
+                      onChange={(e) => handleThemeChange('fontFamily', e.target.value)}
+                      className="w-full bg-background text-on-surface p-2 rounded-md border border-slate-600 text-sm"
+                    >
+                      {fonts.map(font => (
+                        <option key={font.value} value={font.value}>{font.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="text-xs text-on-surface-secondary">
+                  <p>💡 As mudanças serão aplicadas ao salvar as configurações</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-surface p-6 rounded-lg shadow-lg space-y-6">

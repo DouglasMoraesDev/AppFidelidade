@@ -136,6 +136,16 @@ const App: React.FC = () => {
       shareLink = url.href;
     }
 
+    // Parse tema_config se existir
+    let temaConfig: Theme | null = null;
+    if (snapshot.estabelecimento.tema_config) {
+      try {
+        temaConfig = JSON.parse(snapshot.estabelecimento.tema_config);
+      } catch (e) {
+        console.warn('Erro ao parsear tema_config:', e);
+      }
+    }
+
     return {
       id: snapshot.estabelecimento.id,
       name: snapshot.estabelecimento.nome,
@@ -154,7 +164,10 @@ const App: React.FC = () => {
       slug: snapshot.estabelecimento.slug_publico,
       publicLink: shareLink,
       appDisplayName: snapshot.estabelecimento.nome_app || 'AppFidelidade',
-      lastPaymentDate: snapshot.stats?.assinaturaPagaEm || null
+      lastPaymentDate: snapshot.stats?.assinaturaPagaEm || null,
+      temaConfig,
+      autoNotificarVoucher: snapshot.estabelecimento.auto_notificar_voucher || false,
+      lembretePontosProximos: snapshot.estabelecimento.lembrete_pontos_proximos || false
     };
   };
 
@@ -167,6 +180,11 @@ const App: React.FC = () => {
       setEstablishments([mapped]);
       setPublicSlug(mapped.slug || '');
       setPublicLink(mapped.publicLink || '');
+
+      // Aplicar tema customizado se existir
+      if (mapped.temaConfig) {
+        setTheme(mapped.temaConfig);
+      }
 
       // Reidrata lembrete de voucher enviado recentemente (persistido no localStorage)
       try {
@@ -445,7 +463,15 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleConfigUpdate = useCallback(async (data: { mensagem_voucher?: string; nome_app?: string; link_consulta?: string; pontos_para_voucher?: number }) => {
+  const handleConfigUpdate = useCallback(async (data: { 
+    mensagem_voucher?: string; 
+    nome_app?: string; 
+    link_consulta?: string; 
+    pontos_para_voucher?: number;
+    tema_config?: string;
+    auto_notificar_voucher?: boolean;
+    lembrete_pontos_proximos?: boolean;
+  }) => {
     try {
       const resp = await updateEstabelecimentoConfig(data);
       if (resp?.estabelecimento) {
@@ -454,10 +480,22 @@ const App: React.FC = () => {
           voucherMessage: resp.estabelecimento.mensagem_voucher ?? prev.voucherMessage,
           pointsForVoucher: resp.estabelecimento.pontos_para_voucher ?? prev.pointsForVoucher,
           appDisplayName: resp.estabelecimento.nome_app ?? prev.appDisplayName,
-          publicLink: resp.estabelecimento.link_consulta || prev.publicLink
+          publicLink: resp.estabelecimento.link_consulta || prev.publicLink,
+          autoNotificarVoucher: resp.estabelecimento.auto_notificar_voucher ?? prev.autoNotificarVoucher,
+          lembretePontosProximos: resp.estabelecimento.lembrete_pontos_proximos ?? prev.lembretePontosProximos
         } : prev);
         if (resp.estabelecimento.link_consulta) {
           setPublicLink(resp.estabelecimento.link_consulta);
+        }
+        // Aplicar tema se foi atualizado
+        if (data.tema_config) {
+          try {
+            const temaParsed = JSON.parse(data.tema_config);
+            setTheme(temaParsed);
+            setLoggedInEstablishment(prev => prev ? { ...prev, temaConfig: temaParsed } : prev);
+          } catch (e) {
+            console.warn('Erro ao aplicar tema:', e);
+          }
         }
       }
     } catch (err: any) {
@@ -627,6 +665,9 @@ const App: React.FC = () => {
             onPasswordChange={handleChangePassword}
             onDownloadBackup={handleBackupDownload}
             lastPaymentDate={loggedInEstablishment.lastPaymentDate}
+            currentTheme={theme}
+            autoNotificarVoucher={loggedInEstablishment.autoNotificarVoucher}
+            lembretePontosProximos={loggedInEstablishment.lembretePontosProximos}
             onLogout={handleLogout}
           />
         );

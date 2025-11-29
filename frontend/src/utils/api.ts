@@ -80,7 +80,15 @@ export async function downloadBackup() {
   return request('/api/estabelecimentos/me/backup');
 }
 
-export async function updateEstabelecimentoConfig(body: { mensagem_voucher?: string; nome_app?: string; pontos_para_voucher?: number; link_consulta?: string }) {
+export async function updateEstabelecimentoConfig(body: { 
+  mensagem_voucher?: string; 
+  nome_app?: string; 
+  pontos_para_voucher?: number; 
+  link_consulta?: string;
+  tema_config?: string;
+  auto_notificar_voucher?: boolean;
+  lembrete_pontos_proximos?: boolean;
+}) {
   return request('/api/estabelecimentos/me/config', {
     method: 'PATCH',
     body: JSON.stringify(body)

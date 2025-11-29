@@ -10,13 +10,34 @@ interface ClientListProps {
 
 const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchBy, setSearchBy] = useState<'all' | 'name' | 'phone' | 'points'>('all');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [modalError, setModalError] = useState('');
 
-  const filteredClients = useMemo(() =>
-    clients.filter(client =>
-      client.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [clients, searchTerm]);
+  const filteredClients = useMemo(() => {
+    if (!searchTerm.trim()) return clients;
+    
+    const term = searchTerm.toLowerCase().trim();
+    
+    return clients.filter(client => {
+      if (searchBy === 'name') {
+        return client.name.toLowerCase().includes(term);
+      } else if (searchBy === 'phone') {
+        return client.phone.replace(/\D/g, '').includes(term.replace(/\D/g, ''));
+      } else if (searchBy === 'points') {
+        const points = parseInt(term);
+        if (isNaN(points)) return false;
+        return client.points === points || client.points >= points;
+      } else {
+        // Busca em todos os campos
+        return (
+          client.name.toLowerCase().includes(term) ||
+          client.phone.replace(/\D/g, '').includes(term.replace(/\D/g, '')) ||
+          client.points.toString().includes(term)
+        );
+      }
+    });
+  }, [clients, searchTerm, searchBy]);
 
   const handleSave = () => {
     if (editingClient) {
@@ -47,14 +68,33 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
         <h1 className="text-3xl font-bold text-on-surface mb-2">Lista de Clientes</h1>
         <p className="text-on-surface-secondary">Gerencie seus clientes cadastrados.</p>
       </div>
-      <div className="bg-surface p-4 rounded-lg shadow-lg">
-        <input
-          type="text"
-          placeholder="Pesquisar cliente por nome..."
-          className="w-full bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-        />
+      <div className="bg-surface p-4 rounded-lg shadow-lg space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Pesquisar cliente..."
+              className="w-full bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            value={searchBy}
+            onChange={e => setSearchBy(e.target.value as 'all' | 'name' | 'phone' | 'points')}
+            className="bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none"
+          >
+            <option value="all">Todos os campos</option>
+            <option value="name">Nome</option>
+            <option value="phone">Telefone</option>
+            <option value="points">Pontos (≥)</option>
+          </select>
+        </div>
+        {searchTerm && (
+          <p className="text-sm text-on-surface-secondary">
+            {filteredClients.length} {filteredClients.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+          </p>
+        )}
       </div>
 
       {/* Desktop Table View */}

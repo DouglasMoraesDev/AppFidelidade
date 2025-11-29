@@ -46,4 +46,7 @@ export interface Establishment {
   publicLink?: string;
   appDisplayName?: string;
   lastPaymentDate?: string | null;
+  temaConfig?: Theme | null;
+  autoNotificarVoucher?: boolean;
+  lembretePontosProximos?: boolean;
 }

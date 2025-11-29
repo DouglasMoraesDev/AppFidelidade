@@ -57,15 +57,85 @@ async function criarMovimento(req, res) {
         data: { pontos: { increment: toAdd } },
         include: {
           cliente: true,
+          estabelecimento: {
+            select: {
+              auto_notificar_voucher: true,
+              mensagem_voucher: true,
+              pontos_para_voucher: true
+            }
+          },
           movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 }
         }
       });
 
-      return { movimento, cartao: cartaoAtualizado };
+      // Verificar se atingiu pontos suficientes e se auto-notificação está ativa
+      const pontosAposAdicao = cartao.pontos + toAdd;
+      const atingiuLimite = pontosAposAdicao >= pontosNecessarios;
+      const autoNotificar = cartaoAtualizado.estabelecimento?.auto_notificar_voucher === true;
+
+      let voucherAutoEnviado = null;
+      if (atingiuLimite && autoNotificar) {
+        // Enviar voucher automaticamente
+        try {
+          const template = cartaoAtualizado.estabelecimento.mensagem_voucher || 'Parabéns {cliente}, você recebeu um voucher!';
+          const mensagem = template.replace('{cliente}', cartaoAtualizado.cliente.nome);
+
+          voucherAutoEnviado = await tx.voucher.create({
+            data: {
+              cartaoId: cartaoAtualizado.id,
+              clienteId: cartaoAtualizado.clienteId,
+              estabelecimentoId: cartaoAtualizado.estabelecimentoId,
+              mensagem_enviada: mensagem,
+              numero_cliente: cartaoAtualizado.cliente.telefone,
+              enviado_por_id: Number(req.userId || 0),
+              status: 'enviado_automatico'
+            }
+          });
+
+          await tx.movimento.create({
+            data: {
+              cartaoId: cartaoAtualizado.id,
+              tipo: 'debito',
+              pontos: -pontosNecessarios,
+              descricao: 'Voucher resgatado automaticamente'
+            }
+          });
+
+          const cartaoFinal = await tx.cartaoFidelidade.update({
+            where: { id: cartaoAtualizado.id },
+            data: { pontos: { decrement: pontosNecessarios } },
+            include: {
+              cliente: true,
+              movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 }
+            }
+          });
+
+          cartaoAtualizado.pontos = cartaoFinal.pontos;
+          cartaoAtualizado.movimentos = cartaoFinal.movimentos;
+        } catch (errAuto) {
+          console.error('[Mov] Erro ao enviar voucher automático:', errAuto);
+          // Não falha a operação se auto-notificação falhar
+        }
+      }
+
+      return { movimento, cartao: cartaoAtualizado, voucherAutoEnviado };
     });
 
     const note = toAdd < pts ? `Apenas ${toAdd} pontos foram adicionados para não exceder o limite de ${pontosNecessarios} pontos.` : undefined;
-    return res.status(201).json({ ...resultado, note });
+    const response = { ...resultado };
+    if (resultado.voucherAutoEnviado) {
+      response.voucherAutoEnviado = {
+        ...resultado.voucherAutoEnviado,
+        whatsapp: {
+          numero: resultado.cartao.cliente.telefone,
+          mensagem: resultado.voucherAutoEnviado.mensagem_enviada
+        }
+      };
+      response.note = note ? `${note} Voucher enviado automaticamente!` : 'Voucher enviado automaticamente!';
+    } else {
+      response.note = note;
+    }
+    return res.status(201).json(response);
   } catch (err) {
     console.error('[Mov] erro criarMovimento:', err && err.stack ? err.stack : err);
     if (err.code === 'MENSALIDADE_VENCIDA') {
