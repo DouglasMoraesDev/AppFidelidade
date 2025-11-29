@@ -26,6 +26,7 @@ import {
   fetchSnapshot,
   deletarCliente,
   createCliente,
+  atualizarCliente,
   adicionarPontos,
   enviarVoucher,
   changePassword,
@@ -220,11 +221,23 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const updateClient = useCallback((updatedClient: Client) => {
-    setLoggedInEstablishment(prev => prev ? {
-      ...prev,
-      clients: prev.clients.map(c => c.id === updatedClient.id ? updatedClient : c)
-    } : prev);
+  const updateClient = useCallback(async (updatedClient: Client) => {
+    if (!updatedClient.cartaoId) return;
+    try {
+      const resp = await atualizarCliente(updatedClient.cartaoId, {
+        nome: updatedClient.name,
+        telefone: updatedClient.phone,
+        pontos: updatedClient.points
+      });
+      if (resp?.cliente) {
+        setLoggedInEstablishment(prev => prev ? {
+          ...prev,
+          clients: prev.clients.map(c => c.id === updatedClient.id ? resp.cliente : c)
+        } : prev);
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao atualizar cliente');
+    }
   }, []);
 
   const deleteClient = useCallback(async (clientId: string) => {

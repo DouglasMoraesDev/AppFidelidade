@@ -212,6 +212,72 @@ async function buscar(req, res) {
   }
 }
 
+async function atualizarCliente(req, res) {
+  try {
+    const estabelecimentoId = req.estabelecimentoId;
+    if (!estabelecimentoId) return res.status(401).json({ error: 'Estabelecimento não identificado' });
+
+    const cartaoId = Number(req.params.id);
+    if (!cartaoId) return res.status(400).json({ error: 'ID do cartão é obrigatório' });
+
+    const { nome, telefone, pontos } = req.body;
+    if (!nome || !telefone) return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
+
+    const cartao = await prisma.cartaoFidelidade.findUnique({
+      where: { id: cartaoId },
+      include: { cliente: true, movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 } }
+    });
+
+    if (!cartao) return res.status(404).json({ error: 'Cartão não encontrado' });
+    if (cartao.estabelecimentoId !== Number(estabelecimentoId)) {
+      return res.status(403).json({ error: 'Cartão não pertence ao seu estabelecimento' });
+    }
+
+    const resultado = await prisma.$transaction(async (tx) => {
+      const telefoneLimpo = limparTelefone(telefone);
+      
+      // Atualiza o cliente
+      await tx.cliente.update({
+        where: { id: cartao.clienteId },
+        data: { nome, telefone: telefoneLimpo }
+      });
+
+      let cartaoAtualizado = { ...cartao };
+
+      // Se pontos foi alterado, cria um movimento
+      if (pontos !== undefined && pontos !== cartao.pontos) {
+        const diferenca = Number(pontos) - cartao.pontos;
+        const tipo = diferenca > 0 ? 'credito' : 'debito';
+        
+        await tx.movimento.create({
+          data: {
+            cartaoId: cartao.id,
+            tipo,
+            pontos: Math.abs(diferenca),
+            descricao: 'Pontos ajustados manualmente'
+          }
+        });
+
+        cartaoAtualizado = await tx.cartaoFidelidade.update({
+          where: { id: cartaoId },
+          data: { pontos: Number(pontos) },
+          include: {
+            cliente: true,
+            movimentos: { orderBy: { criadoEm: 'desc' }, take: 1 }
+          }
+        });
+      }
+
+      return cartaoAtualizado;
+    });
+
+    return res.json({ cliente: mapCartaoToCliente(resultado) });
+  } catch (err) {
+    console.error('[Clientes] erro atualizarCliente:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao atualizar cliente' });
+  }
+}
+
 async function deletarCliente(req, res) {
   try {
     const estabelecimentoId = req.estabelecimentoId;
@@ -251,4 +317,4 @@ async function deletarCliente(req, res) {
   }
 }
 
-module.exports = { criarCliente, buscar, listarPorEstabelecimento, deletarCliente };
+module.exports = { criarCliente, buscar, listarPorEstabelecimento, atualizarCliente, deletarCliente };

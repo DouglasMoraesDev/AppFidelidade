@@ -112,6 +112,13 @@ export async function createCliente(data: { nome: string; telefone: string; pont
   });
 }
 
+export async function atualizarCliente(cartaoId: number, data: { nome: string; telefone: string; pontos?: number }) {
+  return request(`/api/clientes/${cartaoId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+}
+
 export async function listarClientes() {
   return request('/api/clientes');
 }
@@ -196,6 +203,7 @@ export default {
   uploadLogo,
   confirmarMensalidade,
   createCliente,
+  atualizarCliente,
   listarClientes,
   buscarClientesPublico,
   adicionarPontos,
