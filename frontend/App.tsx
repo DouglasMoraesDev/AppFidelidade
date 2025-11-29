@@ -43,7 +43,7 @@ import {
 // Em produção, usar raiz (/) pois frontend é servido pelo backend
 // Em desenvolvimento, usar localhost:4000
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:4000');
-const DEFAULT_LOGO = 'https://tailwindui.com/img/logos/mark.svg?color=teal&shade=500';
+const DEFAULT_LOGO = '/logo.svg';
 const SUPER_ADMIN_SECRET = 'Dooug#525210';
 
 const App: React.FC = () => {
@@ -295,7 +295,9 @@ const App: React.FC = () => {
         confirmVoucherSent(clientId);
       }
     } catch (err: any) {
-      alert(err?.message || 'Erro ao enviar voucher');
+      console.error('Erro ao enviar voucher:', err);
+      const errorMsg = typeof err === 'string' ? err : (err?.message || 'Erro ao enviar voucher');
+      alert(`Erro ao enviar voucher: ${errorMsg}`);
     }
   }, [loggedInEstablishment]);
 
