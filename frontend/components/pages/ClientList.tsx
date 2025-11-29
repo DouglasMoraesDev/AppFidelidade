@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { Client } from '../../types';
 import { TrashIcon, PencilIcon } from '../icons/Icons';
+import SuccessModal from '../SuccessModal';
+import DeleteConfirmationModal from '../DeleteConfirmationModal';
 
 interface ClientListProps {
   clients: Client[];
   onEdit: (client: Client) => void;
-  onDelete: (clientId: string) => void;
+  onDelete: (clientId: string) => Promise<void>;
 }
 
 const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) => {
@@ -13,6 +15,10 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
   const [searchBy, setSearchBy] = useState<'all' | 'name' | 'phone' | 'points'>('all');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [modalError, setModalError] = useState('');
+  const [showEditSuccess, setShowEditSuccess] = useState(false);
+  const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [editedClientName, setEditedClientName] = useState('');
 
   const filteredClients = useMemo(() => {
     if (!searchTerm.trim()) return clients;
@@ -45,9 +51,11 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
         setModalError('Nome e telefone não podem ficar vazios.');
         return;
       }
+      setEditedClientName(editingClient.name);
       onEdit(editingClient);
       setEditingClient(null);
       setModalError('');
+      setShowEditSuccess(true);
     }
   };
   
@@ -117,7 +125,7 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setEditingClient(client)} className="p-2 text-blue-400 hover:text-blue-300 transition-colors"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => onDelete(client.id)} className="p-2 text-red-400 hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
+                    <button onClick={() => setClientToDelete({ id: client.id, name: client.name })} className="p-2 text-red-400 hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
                   </div>
                 </td>
               </tr>
@@ -146,7 +154,7 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
                 </div>
                 <div className="mt-4 pt-4 border-t border-background flex justify-end gap-2">
                     <button onClick={() => setEditingClient(client)} className="p-2 text-blue-400 hover:text-blue-300 transition-colors"><PencilIcon className="w-5 h-5"/></button>
-                    <button onClick={() => onDelete(client.id)} className="p-2 text-red-400 hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
+                    <button onClick={() => setClientToDelete({ id: client.id, name: client.name })} className="p-2 text-red-400 hover:text-red-300 transition-colors"><TrashIcon className="w-5 h-5"/></button>
                 </div>
             </div>
         ))}
@@ -168,6 +176,39 @@ const ClientList: React.FC<ClientListProps> = ({ clients, onEdit, onDelete }) =>
             </div>
           </div>
         </div>
+      )}
+
+      {clientToDelete && (
+        <DeleteConfirmationModal
+          itemName={clientToDelete.name}
+          onConfirm={async () => {
+            try {
+              await onDelete(clientToDelete.id);
+              setShowDeleteSuccess(true);
+              setClientToDelete(null);
+            } catch (err) {
+              // Erro já tratado no App.tsx
+              setClientToDelete(null);
+            }
+          }}
+          onCancel={() => setClientToDelete(null)}
+        />
+      )}
+
+      {showEditSuccess && (
+        <SuccessModal
+          title="Cliente Editado!"
+          message={`O cliente ${editedClientName} foi editado com sucesso.`}
+          onClose={() => setShowEditSuccess(false)}
+        />
+      )}
+
+      {showDeleteSuccess && (
+        <SuccessModal
+          title="Cliente Excluído!"
+          message="O cliente foi excluído com sucesso."
+          onClose={() => setShowDeleteSuccess(false)}
+        />
       )}
     </div>
   );

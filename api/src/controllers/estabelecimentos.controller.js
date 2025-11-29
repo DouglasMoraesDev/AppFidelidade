@@ -8,7 +8,11 @@ const crypto = require('crypto');
 const { registrarPagamento } = require('../services/assinatura.service');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'troque_esta_senha';
-const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+// Usar URL de produção se estiver em produção, senão usar variável de ambiente ou localhost
+const FRONTEND_URL = process.env.NODE_ENV === 'production' 
+  ? (process.env.FRONTEND_URL || 'https://appfidelidade-production.up.railway.app')
+  : (process.env.FRONTEND_URL || 'http://localhost:3000');
+const FRONTEND_URL_CLEAN = FRONTEND_URL.replace(/\/$/, '');
 
 async function gerarSlugUnico() {
   for (let tentativas = 0; tentativas < 5; tentativas += 1) {
@@ -51,7 +55,9 @@ async function criarEstabelecimento(req, res) {
     const pontosParaVoucher = Number(req.body.pontos_para_voucher || req.body.pontosParaVoucher || 10) || 10;
     const mensagemVoucher = mensagem_voucher || 'Parabéns, {cliente}! Você desbloqueou um benefício.';
     const slug = await gerarSlugUnico();
-    const linkConsulta = `${FRONTEND_URL}/consultar?slug=${slug}`;
+    // Sempre usar URL de produção para links de consulta
+    const productionUrl = 'https://appfidelidade-production.up.railway.app';
+    const linkConsulta = `${productionUrl}/consultar?slug=${slug}`;
 
     const estab = await prisma.estabelecimento.create({
       data: {
@@ -217,28 +223,25 @@ async function snapshot(req, res) {
 
     if (!estabelecimento) return res.status(404).json({ error: 'Estabelecimento não encontrado' });
 
-    // Atualiza link antigo para o novo formato se necessário
-    if (estabelecimento.link_consulta) {
-      const oldFormatMatch = estabelecimento.link_consulta.match(/\/consulta\/([^\/\?]+)/);
-      if (oldFormatMatch && oldFormatMatch[1]) {
-        const slug = oldFormatMatch[1];
-        const newLink = `${FRONTEND_URL}/consultar?slug=${slug}`;
+    // Sempre garantir que o link use a URL de produção
+    const slug = estabelecimento.slug_publico;
+    if (slug) {
+      // Sempre usar URL de produção para links de consulta
+      const productionUrl = 'https://appfidelidade-production.up.railway.app';
+      const correctLink = `${productionUrl}/consultar?slug=${slug}`;
+      
+      // Se não tem link ou o link está errado, corrigir
+      if (!estabelecimento.link_consulta || 
+          estabelecimento.link_consulta.includes('localhost') || 
+          estabelecimento.link_consulta.includes(':3000') || 
+          estabelecimento.link_consulta.includes(':5173') || 
+          estabelecimento.link_consulta.includes(':5174') ||
+          !estabelecimento.link_consulta.includes('appfidelidade-production.up.railway.app')) {
         await prisma.estabelecimento.update({
           where: { id: estabelecimento.id },
-          data: { link_consulta: newLink }
+          data: { link_consulta: correctLink }
         });
-        estabelecimento.link_consulta = newLink;
-      }
-      // Corrige porta se necessário
-      if (estabelecimento.link_consulta.includes(':5173') || estabelecimento.link_consulta.includes(':5174')) {
-        const correctedLink = estabelecimento.link_consulta
-          .replace(/:5173/g, ':3000')
-          .replace(/:5174/g, ':3000');
-        await prisma.estabelecimento.update({
-          where: { id: estabelecimento.id },
-          data: { link_consulta: correctedLink }
-        });
-        estabelecimento.link_consulta = correctedLink;
+        estabelecimento.link_consulta = correctLink;
       }
     }
 
@@ -325,7 +328,43 @@ async function atualizarConfiguracoes(req, res) {
     const dataUpdate = {};
     if (typeof mensagem_voucher === 'string') dataUpdate.mensagem_voucher = mensagem_voucher;
     if (typeof nome_app === 'string') dataUpdate.nome_app = nome_app;
-    if (typeof link_consulta === 'string') dataUpdate.link_consulta = link_consulta;
+    if (typeof link_consulta === 'string') {
+      // Sempre garantir que o link use URL de produção
+      const productionUrl = 'https://appfidelidade-production.up.railway.app';
+      // Se o link contém localhost ou está errado, corrigir
+      if (link_consulta.includes('localhost') || link_consulta.includes(':3000') || link_consulta.includes(':5173') || link_consulta.includes(':5174')) {
+        // Extrair slug do link ou buscar do estabelecimento
+        const slugMatch = link_consulta.match(/slug=([^&]+)/);
+        const slug = slugMatch ? slugMatch[1] : null;
+        if (slug) {
+          dataUpdate.link_consulta = `${productionUrl}/consultar?slug=${slug}`;
+        } else {
+          // Se não tem slug no link, buscar do estabelecimento
+          const estab = await prisma.estabelecimento.findUnique({ where: { id: Number(estabelecimentoId) }, select: { slug_publico: true } });
+          if (estab?.slug_publico) {
+            dataUpdate.link_consulta = `${productionUrl}/consultar?slug=${estab.slug_publico}`;
+          } else {
+            dataUpdate.link_consulta = link_consulta; // Manter como está se não conseguir corrigir
+          }
+        }
+      } else if (!link_consulta.includes('appfidelidade-production.up.railway.app')) {
+        // Se não contém a URL de produção, corrigir
+        const slugMatch = link_consulta.match(/slug=([^&]+)/);
+        const slug = slugMatch ? slugMatch[1] : null;
+        if (slug) {
+          dataUpdate.link_consulta = `${productionUrl}/consultar?slug=${slug}`;
+        } else {
+          const estab = await prisma.estabelecimento.findUnique({ where: { id: Number(estabelecimentoId) }, select: { slug_publico: true } });
+          if (estab?.slug_publico) {
+            dataUpdate.link_consulta = `${productionUrl}/consultar?slug=${estab.slug_publico}`;
+          } else {
+            dataUpdate.link_consulta = link_consulta;
+          }
+        }
+      } else {
+        dataUpdate.link_consulta = link_consulta; // Já está correto
+      }
+    }
     if (typeof pontos_para_voucher !== 'undefined') {
       const pontos = Number(pontos_para_voucher);
       if (!Number.isFinite(pontos) || pontos <= 0) {

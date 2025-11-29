@@ -118,22 +118,16 @@ const App: React.FC = () => {
       date: p.pagoEm
     }));
 
-    // Constrói o link de consulta pública baseado na URL atual
-    let shareLink = snapshot.estabelecimento?.link_consulta;
+    // Constrói o link de consulta pública - SEMPRE usar URL de produção
+    const slug = snapshot.estabelecimento?.slug_publico;
+    const productionUrl = 'https://appfidelidade-production.up.railway.app';
     
-    if (!shareLink && typeof window !== 'undefined') {
-      // Se não tiver link salvo, constrói baseado na origem atual
-      const slug = snapshot.estabelecimento?.slug_publico;
-      if (slug) {
-        shareLink = `${window.location.origin}/consultar?slug=${slug}`;
-      }
-    }
-
-    if (shareLink && typeof window !== 'undefined') {
-      // Normaliza o link para sempre usar o origin correto
-      // Remove portas de desenvolvimento (5173, 5174, 3000, etc) e usa a origem
-      const url = new URL(shareLink, window.location.origin);
-      shareLink = url.href;
+    // Sempre gerar link com URL de produção, independente do que está salvo
+    let shareLink = slug ? `${productionUrl}/consultar?slug=${slug}` : snapshot.estabelecimento?.link_consulta;
+    
+    // Se o link salvo contém localhost ou está errado, usar o correto
+    if (shareLink && (shareLink.includes('localhost') || shareLink.includes(':3000') || shareLink.includes(':5173') || shareLink.includes(':5174'))) {
+      shareLink = slug ? `${productionUrl}/consultar?slug=${slug}` : shareLink;
     }
 
     // Parse tema_config se existir
@@ -319,7 +313,9 @@ const App: React.FC = () => {
 
   const deleteClient = useCallback(async (clientId: string) => {
     const client = loggedInEstablishment?.clients.find(c => c.id === clientId);
-    if (!client || !client.cartaoId) return;
+    if (!client || !client.cartaoId) {
+      throw new Error('Cliente não encontrado');
+    }
     
     try {
       await deletarCliente(client.cartaoId);
@@ -334,6 +330,7 @@ const App: React.FC = () => {
       }
     } catch (err: any) {
       alert(err?.message || 'Erro ao deletar cliente');
+      throw err; // Re-throw para o componente tratar
     }
   }, [loggedInEstablishment, refreshSnapshot]);
 
@@ -497,18 +494,21 @@ const App: React.FC = () => {
             console.warn('Erro ao aplicar tema:', e);
           }
         }
+        return; // Sucesso
       }
+      throw new Error('Resposta inválida do servidor');
     } catch (err: any) {
-      alert(err?.message || 'Erro ao salvar configurações');
+      throw err; // Re-throw para o componente tratar
     }
   }, []);
 
   const handleChangePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     try {
       await changePassword({ senhaAtual: currentPassword, novaSenha: newPassword });
-      alert('Senha alterada com sucesso!');
+      // Sucesso será tratado no componente Settings
     } catch (err: any) {
       alert(err?.message || 'Erro ao trocar senha');
+      throw err; // Re-throw para o componente tratar
     }
   }, []);
 

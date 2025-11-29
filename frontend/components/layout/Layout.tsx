@@ -28,7 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, setCurrentPage, 
           onMenuClick={() => setSidebarOpen(true)}
           currentPage={currentPage}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+        <main className="flex-1 p-2 sm:p-4 lg:p-6 lg:p-8 overflow-y-auto overflow-x-hidden max-w-full">
           {children}
         </main>
       </div>

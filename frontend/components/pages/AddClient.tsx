@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import SuccessModal from '../SuccessModal';
+
 interface AddClientProps {
   onAddClient: (client: { name: string; phone: string; points: number }) => void;
 }
@@ -8,6 +10,8 @@ const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {
   const [phone, setPhone] = useState('');
   const [points, setPoints] = useState(0);
   const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [clientName, setClientName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,10 +20,12 @@ const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {
       return;
     }
     setError('');
+    setClientName(name);
     onAddClient({ name, phone, points });
     setName('');
     setPhone('');
     setPoints(0);
+    setShowSuccess(true);
   };
 
   return (
@@ -70,6 +76,14 @@ const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {
           </button>
         </form>
       </div>
+
+      {showSuccess && (
+        <SuccessModal
+          title="Cliente Cadastrado!"
+          message={`O cliente ${clientName} foi cadastrado com sucesso.`}
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
     </div>
   );
 };

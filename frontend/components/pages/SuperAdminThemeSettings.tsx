@@ -7,6 +7,8 @@ interface SuperAdminThemeSettingsProps {
 }
 
 const fonts = [
+  { name: 'Montserrat (Títulos)', value: "'Montserrat', sans-serif" },
+  { name: 'Oxanium (Texto)', value: "'Oxanium', sans-serif" },
   { name: 'Inter', value: "'Inter', sans-serif" },
   { name: 'Roboto', value: "'Roboto', sans-serif" },
   { name: 'Lato', value: "'Lato', sans-serif" },
