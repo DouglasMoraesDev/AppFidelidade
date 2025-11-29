@@ -157,6 +157,22 @@ const App: React.FC = () => {
       setPublicSlug(mapped.slug || '');
       setPublicLink(mapped.publicLink || '');
 
+      // Reidrata lembrete de voucher enviado recentemente (persistido no localStorage)
+      try {
+        const raw = localStorage.getItem('lastVoucherSent');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.clientId && parsed?.timestamp) {
+            setLoggedInEstablishment(prev => prev ? ({
+              ...prev,
+              clients: prev.clients.map(c => c.id === parsed.clientId ? { ...c, lastVoucherSent: parsed.timestamp } : c)
+            }) : prev);
+          }
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+
       const validade = data.stats?.assinaturaValidaAte ? new Date(data.stats.assinaturaValidaAte) : null;
       setMensalidadeExpirada(!validade || validade < new Date());
     } catch (err) {
@@ -165,6 +181,23 @@ const App: React.FC = () => {
       setLoadingSnapshot(false);
     }
   }, []);
+
+  // Mantém sessão ativa por até 1 hora com base no timestamp salvo em localStorage
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const ts = Number(localStorage.getItem('token_ts') || '0');
+    const oneHourMs = 60 * 60 * 1000;
+    if (token && ts && (Date.now() - ts) < oneHourMs) {
+      // tenta reidratar snapshot e manter usuário logado
+      refreshSnapshot().then(() => setCurrentView && setCurrentView('establishmentApp')).catch(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('token_ts');
+      });
+    } else {
+      localStorage.removeItem('token');
+      localStorage.removeItem('token_ts');
+    }
+  }, [refreshSnapshot]);
 
   const handleRegister = useCallback(() => {
     setAuthPage('login');
@@ -176,6 +209,8 @@ const App: React.FC = () => {
       const resp = await apiLogin(username, password);
       if (!resp?.token) throw new Error('Resposta inválida do servidor');
       localStorage.setItem('token', resp.token);
+      // salva timestamp para expirar a sessão após 1 hora
+      localStorage.setItem('token_ts', String(Date.now()));
       setMensalidadeExpirada(!!resp.requiresPayment);
       setShowPaymentPage(!!resp.requiresPayment);
       await refreshSnapshot();
@@ -190,6 +225,7 @@ const App: React.FC = () => {
     setCurrentView('chooser');
     setCurrentPage('dashboard');
     localStorage.removeItem('token');
+    localStorage.removeItem('token_ts');
   }, []);
 
   const handlePaymentSuccess = useCallback(async () => {
@@ -324,7 +360,13 @@ const App: React.FC = () => {
       clients: prev.clients.map(c => c.id === clientId ? { ...c, points: 0, lastVoucherSent: new Date().toISOString() } : c),
       totalVouchersSent: prev.totalVouchersSent + 1
     } : prev);
-    
+    // Persiste lembrete local para sobreviver a reloads
+    try {
+      const timestamp = new Date().toISOString();
+      localStorage.setItem('lastVoucherSent', JSON.stringify({ clientId, timestamp }));
+    } catch (e) {
+      // ignore
+    }
     setPendingVoucher(null);
     alert(`Voucher confirmado para ${client.name}! Pontos resetados.`);
   }, [loggedInEstablishment]);
