@@ -38,3 +38,4 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ title, message, onClose }) 
 
 export default SuccessModal;
 
+

@@ -104,6 +104,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
       fd.append('mensagem_voucher', formData.voucherMessage || '');
       fd.append('nomeUsuario', formData.username);
       fd.append('senha', formData.password);
+      fd.append('pontos_para_voucher', String(formData.pointsForVoucher));
 
       fd.append('logo', logoFile as File);
 
@@ -195,7 +196,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-1">
-                <InputField id="pointsForVoucher" label="Pontos para Voucher * (apenas frontend)" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
+                <InputField id="pointsForVoucher" label="Pontos necessários para liberar o voucher *" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
                 {errors.pointsForVoucher && <p className="text-red-400 text-xs mt-1">{errors.pointsForVoucher}</p>}
               </div>
             </div>
