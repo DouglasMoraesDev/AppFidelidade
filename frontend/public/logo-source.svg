@@ -1,0 +1,31 @@
+<svg width="768" height="768" viewBox="0 0 768 768" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background opcional (transparente) -->
+  
+  <!-- Cartão de fidelidade -->
+  <rect x="244" y="260" width="320" height="200" rx="24" fill="#4DAFA8" stroke="#1A3A3A" stroke-width="12"/>
+  
+  <!-- Estrela pequena dentro do cartão -->
+  <g transform="translate(300, 320)">
+    <path d="M 0,-15 L 4.5,-4.5 L 15,0 L 4.5,4.5 L 0,15 L -4.5,4.5 L -15,0 L -4.5,-4.5 Z" fill="#FFD66B" stroke="#1A3A3A" stroke-width="3"/>
+  </g>
+  
+  <!-- Linhas tracejadas do cartão (pontos) -->
+  <line x1="340" y1="330" x2="360" y2="330" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="380" y1="330" x2="400" y2="330" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="420" y1="330" x2="440" y2="330" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="460" y1="330" x2="480" y2="330" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  
+  <line x1="340" y1="360" x2="360" y2="360" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  <line x1="380" y1="360" x2="400" y2="360" stroke="#1A3A3A" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="420" cy="360" r="4" fill="#1A3A3A"/>
+  
+  <!-- Estrela grande de recompensa -->
+  <g transform="translate(580, 300)">
+    <path d="M 0,-45 L 13.5,-13.5 L 45,0 L 13.5,13.5 L 0,45 L -13.5,13.5 L -45,0 L -13.5,-13.5 Z" fill="#FFD66B" stroke="#1A3A3A" stroke-width="8"/>
+    <!-- Inner star detail -->
+    <path d="M 0,-25 L 7.5,-7.5 L 25,0 L 7.5,7.5 L 0,25 L -7.5,7.5 L -25,0 L -7.5,-7.5 Z" fill="#FFF3CC"/>
+  </g>
+  
+  <!-- Texto "appfidelidade" -->
+  <text x="384" y="560" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="#1A3A3A" text-anchor="middle">appfidelidade</text>
+</svg>
