@@ -30,7 +30,7 @@ const fallbackSvg = `
 `;
 
 const pwaSizes = [192, 512];
-const extraPngSizes = [32, 48, 64, 180];
+const extraPngSizes = [16, 32, 48, 64, 180];
 
 async function generateIcons() {
   try {
@@ -62,19 +62,18 @@ async function generateIcons() {
       console.log(`✓ Generated ${outputPath}`);
     }
 
-    // Favicon ICO com 16 e 32
-    const icoPath = path.join(PUBLIC_DIR, 'favicon.ico');
-    const ico16 = await sharp(inputBuffer).resize(16, 16).png().toBuffer();
-    const ico32 = await sharp(inputBuffer).resize(32, 32).png().toBuffer();
-    // sharp não escreve ICO diretamente; usamos uma lib simples inline
-    // Como alternativa simples, salvamos 32x32 e 16x16 PNGs já gerados acima
-    // e deixamos o link para PNG, que é suportado pela maioria dos navegadores modernos.
-    // Se desejar ICO de verdade, instale 'png-to-ico' e converta:
-    //   npm install png-to-ico
-    //   const toIco = require('png-to-ico');
-    //   const icoBuf = await toIco([path.join(PUBLIC_DIR,'favicon-16x16.png'), path.join(PUBLIC_DIR,'favicon-32x32.png')]);
-    //   fs.writeFileSync(icoPath, icoBuf);
-    console.log('ℹ️ Pulo a geração automática de ICO puro; use png-to-ico se precisar do .ico.');
+    // Tentar gerar ICO (se png-to-ico estiver instalado)
+    try {
+      const { default: toIco } = await import('png-to-ico');
+      const icoBuf = await toIco([
+        path.join(PUBLIC_DIR, 'favicon-16x16.png'),
+        path.join(PUBLIC_DIR, 'favicon-32x32.png')
+      ]);
+      fs.writeFileSync(path.join(PUBLIC_DIR, 'favicon.ico'), icoBuf);
+      console.log('✓ Generated favicon.ico');
+    } catch (e) {
+      console.log('ℹ️ favicon.ico não gerado (instale png-to-ico para gerar automaticamente)');
+    }
 
     console.log('✓ All icons generated successfully!');
   } catch (err) {

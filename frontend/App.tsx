@@ -45,7 +45,7 @@ import {
 // Em produção, usar raiz (/) pois frontend é servido pelo backend
 // Em desenvolvimento, usar localhost:4000
 const API_BASE = import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? '' : 'http://localhost:4000');
-const DEFAULT_LOGO = '/logo.svg';
+const DEFAULT_LOGO = '/icon-192x192.png';
 const SUPER_ADMIN_SECRET = 'Dooug#525210';
 
 const App: React.FC = () => {
