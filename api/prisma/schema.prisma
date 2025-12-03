@@ -43,7 +43,7 @@ model Usuario {
   papel             String   @default("operador")
   criadoEm          DateTime @default(now())
 
-  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id])
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
 }
 
 model Cliente {
@@ -64,8 +64,8 @@ model CartaoFidelidade {
   pontos            Int      @default(0)
   criadoEm          DateTime @default(now())
 
-  cliente         Cliente         @relation(fields: [clienteId], references: [id])
-  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id])
+  cliente         Cliente         @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
   movimentos      Movimento[]
   vouchers        Voucher[]
 
@@ -80,7 +80,7 @@ model Movimento {
   descricao String?
   criadoEm  DateTime @default(now())
 
-  cartao CartaoFidelidade @relation(fields: [cartaoId], references: [id])
+  cartao CartaoFidelidade @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
 }
 
 model Voucher {
@@ -94,9 +94,9 @@ model Voucher {
   criadoEm          DateTime @default(now())
   status            String   @default("enviado")
 
-  cartao          CartaoFidelidade @relation(fields: [cartaoId], references: [id])
-  cliente         Cliente          @relation(fields: [clienteId], references: [id])
-  estabelecimento Estabelecimento  @relation(fields: [estabelecimentoId], references: [id])
+  cartao          CartaoFidelidade @relation(fields: [cartaoId], references: [id], onDelete: Cascade)
+  cliente         Cliente          @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  estabelecimento Estabelecimento  @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
 }
 
 model MensalidadePagamento {
@@ -104,5 +104,5 @@ model MensalidadePagamento {
   estabelecimentoId Int
   pagoEm            DateTime @default(now())
 
-  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id])
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
 }
