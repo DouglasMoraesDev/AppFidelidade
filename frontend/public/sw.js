@@ -67,3 +67,52 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Push notification event - recebe notificações push
+self.addEventListener('push', (event) => {
+  let data = { title: 'Nova Notificação', body: 'Você tem uma nova mensagem' };
+  
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body || data.mensagem || 'Você tem uma nova mensagem',
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png',
+    vibrate: [200, 100, 200],
+    tag: data.tag || 'notificacao-app',
+    requireInteraction: false,
+    data: {
+      url: data.url || '/'
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || data.titulo || 'AppFidelidade', options)
+  );
+});
+
+// Notification click event - abre o app ao clicar na notificação
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Se já tem uma janela aberta, foca nela
+      for (let client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      // Senão, abre uma nova
+      if (clients.openWindow) {
+        return clients.openWindow(event.notification.data.url || '/');
+      }
+    })
+  );
+});

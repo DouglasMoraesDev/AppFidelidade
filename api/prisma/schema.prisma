@@ -34,6 +34,7 @@ model Estabelecimento {
   vouchers Voucher[]
   pagamentos MensalidadePagamento[]
   notificacoes Notificacao[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Usuario {
@@ -120,5 +121,19 @@ model Notificacao {
   estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
 
   @@index([estabelecimentoId, lida])
+}
+
+model PushSubscription {
+  id                Int      @id @default(autoincrement())
+  estabelecimentoId Int
+  endpoint          String   @db.VarChar(512)
+  keys_p256dh       String   @db.VarChar(255)
+  keys_auth         String   @db.VarChar(255)
+  criadaEm          DateTime @default(now())
+
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
+
+  @@unique([estabelecimentoId, endpoint])
+  @@index([estabelecimentoId])
 }
 

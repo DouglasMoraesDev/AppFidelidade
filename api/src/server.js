@@ -34,6 +34,7 @@ app.use('/api/mensalidade', require('./routes/mensalidade.routes'));
 app.use('/api/diag', require('./routes/diagnostics.routes'));
 app.use('/api/superadmin', require('./routes/superadmin.routes'));
 app.use('/api/notificacoes', require('./routes/notificacoes.routes'));
+app.use('/api/push', require('./routes/push.routes'));
 
 // Tentar localizar o build do frontend em vários caminhos possíveis e servir
 // os arquivos estáticos apenas se o `dist` existir. Isso evita erros no runtime

@@ -305,6 +305,16 @@ async function enviarNotificacao(req, res) {
 
     console.log(`[SuperAdmin] Notificação criada para estabelecimento ${estabId} (${estabelecimento.nome})`);
 
+    // Envia push notification
+    const { sendPushToEstabelecimento } = require('./push.controller');
+    const pushResult = await sendPushToEstabelecimento(estabId, {
+      titulo: 'Mensagem do Administrador',
+      mensagem: mensagem.trim(),
+      tipo: 'info'
+    });
+    
+    console.log(`[SuperAdmin] Push enviado: ${pushResult.success} sucesso, ${pushResult.failed} falhas`);
+
     return res.json({ 
       ok: true, 
       message: 'Notificação enviada com sucesso',
@@ -313,7 +323,8 @@ async function enviarNotificacao(req, res) {
         estabelecimento: estabelecimento.nome,
         mensagem: notificacao.mensagem,
         enviadoEm: notificacao.criadaEm
-      }
+      },
+      push: pushResult
     });
   } catch (err) {
     console.error('[SuperAdmin] erro enviarNotificacao:', err && err.stack ? err.stack : err);
@@ -351,11 +362,22 @@ async function enviarNotificacaoGlobal(req, res) {
 
     console.log(`[SuperAdmin] ${notificacoes.count} notificações globais criadas para todos os estabelecimentos`);
 
+    // Envia push notification para todos
+    const { sendPushToAll } = require('./push.controller');
+    const pushResult = await sendPushToAll({
+      titulo: titulo?.trim() || 'Comunicado Importante',
+      mensagem: mensagem.trim(),
+      tipo: tipo || 'atualizacao'
+    });
+    
+    console.log(`[SuperAdmin] Push global enviado: ${pushResult.success} sucesso, ${pushResult.failed} falhas`);
+
     return res.json({ 
       ok: true, 
       message: `Notificação enviada para ${notificacoes.count} estabelecimentos`,
       count: notificacoes.count,
-      estabelecimentos: estabelecimentos.map(e => e.nome)
+      estabelecimentos: estabelecimentos.map(e => e.nome),
+      push: pushResult
     });
   } catch (err) {
     console.error('[SuperAdmin] erro enviarNotificacaoGlobal:', err && err.stack ? err.stack : err);

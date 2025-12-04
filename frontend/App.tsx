@@ -253,6 +253,19 @@ const App: React.FC = () => {
       setShowPaymentPage(!!resp.requiresPayment);
       await refreshSnapshot();
       setCurrentView('establishmentApp');
+      
+      // Configura push notifications após login bem-sucedido
+      try {
+        const { subscribeToPush, checkPushSubscription } = await import('./src/utils/pushNotifications');
+        const hasSubscription = await checkPushSubscription();
+        if (!hasSubscription) {
+          await subscribeToPush(API_BASE + '/api', resp.token);
+          console.log('Push notifications configuradas com sucesso');
+        }
+      } catch (pushError) {
+        console.error('Erro ao configurar push notifications:', pushError);
+        // Não bloqueia o login se push falhar
+      }
     } catch (err: any) {
       alert(err?.message || 'Não foi possível autenticar');
     }
