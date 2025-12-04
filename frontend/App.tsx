@@ -40,7 +40,10 @@ import {
   superAdminListEstablishments,
   superAdminUpdateEstablishment,
   superAdminDeleteEstablishment,
-  superAdminAddPayment
+  superAdminAddPayment,
+  superAdminResetPassword,
+  superAdminToggleStatus,
+  superAdminSendNotification
 } from './utils/api';
 
 // Em produção, usar raiz (/) pois frontend é servido pelo backend
@@ -69,7 +72,7 @@ const App: React.FC = () => {
     secondary: '#0891B2',
     background: '#1E293B',
     surface: '#334155',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Oxanium', sans-serif",
   });
 
   const [currentView, setCurrentView] = useState<'chooser' | 'establishmentAuth' | 'superAdminAuth' | 'establishmentApp' | 'superAdminApp'>(isSuperAdminUrl ? 'superAdminAuth' : 'chooser');
@@ -653,9 +656,14 @@ const App: React.FC = () => {
   // Ferramentas Avançadas do Super Admin
   const handleResetPassword = useCallback(async (establishmentId: number, newPassword: string) => {
     if (!superAdminSecret) throw new Error('Não autorizado');
-    // TODO: Implementar endpoint no backend
-    console.log('Reset password for', establishmentId, 'to', newPassword);
-    alert('Funcionalidade de reset de senha será implementada no backend em breve!');
+    try {
+      const response = await superAdminResetPassword(superAdminSecret, establishmentId, newPassword);
+      if (response?.username) {
+        console.log(`Senha resetada para usuário: ${response.username}`);
+      }
+    } catch (err: any) {
+      throw new Error(err?.message || 'Erro ao resetar senha');
+    }
   }, [superAdminSecret]);
 
   const handleForcePayment = useCallback(async (establishmentId: number, months: number) => {
@@ -679,16 +687,26 @@ const App: React.FC = () => {
 
   const handleToggleActive = useCallback(async (establishmentId: number, active: boolean) => {
     if (!superAdminSecret) throw new Error('Não autorizado');
-    // TODO: Implementar endpoint no backend
-    console.log('Toggle active for', establishmentId, 'to', active);
-    alert('Funcionalidade de ativar/desativar será implementada no backend em breve!');
+    try {
+      await superAdminToggleStatus(superAdminSecret, establishmentId, active);
+      // Recarregar lista
+      const data = await superAdminListEstablishments(superAdminSecret);
+      if (data?.estabelecimentos) {
+        setEstablishments(data.estabelecimentos.map(mapSnapshotToEstablishment));
+      }
+    } catch (err: any) {
+      throw new Error(err?.message || 'Erro ao alterar status');
+    }
   }, [superAdminSecret]);
 
   const handleSendNotification = useCallback(async (establishmentId: number, message: string) => {
     if (!superAdminSecret) throw new Error('Não autorizado');
-    // TODO: Implementar endpoint no backend
-    console.log('Send notification to', establishmentId, ':', message);
-    alert('Funcionalidade de notificação será implementada no backend em breve!');
+    try {
+      const response = await superAdminSendNotification(superAdminSecret, establishmentId, message);
+      console.log('Notificação enviada:', response);
+    } catch (err: any) {
+      throw new Error(err?.message || 'Erro ao enviar notificação');
+    }
   }, [superAdminSecret]);
 
   const renderEstablishmentPage = () => {

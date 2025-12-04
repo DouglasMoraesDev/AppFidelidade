@@ -1,4 +1,5 @@
 const prisma = require('../config/prismaClient');
+const bcrypt = require('bcrypt');
 const { registrarPagamento } = require('../services/assinatura.service');
 
 function mapEstabelecimento(estab) {
@@ -107,22 +108,43 @@ async function remover(req, res) {
         where: { estabelecimentoId: estabId }
       });
 
-      // 3. Deleta cartões do estabelecimento
+      // 3. Pega IDs dos clientes antes de deletar os cartões
+      const clientesIds = await tx.cartaoFidelidade.findMany({
+        where: { estabelecimentoId: estabId },
+        select: { clienteId: true },
+        distinct: ['clienteId']
+      });
+      
+      // 4. Deleta cartões do estabelecimento
       await tx.cartaoFidelidade.deleteMany({
         where: { estabelecimentoId: estabId }
       });
 
-      // 4. Deleta pagamentos do estabelecimento
+      // 5. Deleta clientes que não têm mais nenhum cartão em qualquer estabelecimento
+      for (const { clienteId } of clientesIds) {
+        const temOutrosCartoes = await tx.cartaoFidelidade.count({
+          where: { clienteId }
+        });
+        
+        if (temOutrosCartoes === 0) {
+          // Cliente não tem mais cartões em nenhum estabelecimento, pode deletar
+          await tx.cliente.delete({
+            where: { id: clienteId }
+          });
+        }
+      }
+
+      // 6. Deleta pagamentos do estabelecimento
       await tx.mensalidadePagamento.deleteMany({
         where: { estabelecimentoId: estabId }
       });
 
-      // 5. Deleta usuários do estabelecimento
+      // 7. Deleta usuários do estabelecimento
       await tx.usuario.deleteMany({
         where: { estabelecimentoId: estabId }
       });
 
-      // 6. Deleta o logo do sistema de arquivos se existir
+      // 8. Deleta o logo do sistema de arquivos se existir
       if (estabelecimento.logo_path) {
         const fs = require('fs');
         const path = require('path');
@@ -139,7 +161,7 @@ async function remover(req, res) {
         }
       }
 
-      // 7. Por fim, deleta o estabelecimento
+      // 9. Por fim, deleta o estabelecimento
       await tx.estabelecimento.delete({
         where: { id: estabId }
       });
@@ -178,5 +200,135 @@ async function registrarPagamentoManual(req, res) {
   }
 }
 
-module.exports = { listar, atualizar, remover, registrarPagamentoManual };
+async function resetarSenha(req, res) {
+  try {
+    const estabId = Number(req.params.id);
+    if (!estabId) return res.status(400).json({ error: 'ID inválido' });
+
+    const { novaSenha } = req.body;
+    if (!novaSenha || novaSenha.length < 4) {
+      return res.status(400).json({ error: 'Nova senha deve ter no mínimo 4 caracteres' });
+    }
+
+    // Busca o usuário principal do estabelecimento (operador ou admin)
+    const usuario = await prisma.usuario.findFirst({
+      where: { estabelecimentoId: estabId },
+      orderBy: { id: 'asc' } // Pega o primeiro usuário criado
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuário do estabelecimento não encontrado' });
+    }
+
+    // Hash da nova senha usando bcrypt
+    const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+    // Atualiza a senha com hash
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { senhaHash }
+    });
+
+    return res.json({ 
+      ok: true, 
+      message: 'Senha resetada com sucesso',
+      username: usuario.nomeUsuario 
+    });
+  } catch (err) {
+    console.error('[SuperAdmin] erro resetarSenha:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao resetar senha' });
+  }
+}
+
+async function alterarStatus(req, res) {
+  try {
+    const estabId = Number(req.params.id);
+    if (!estabId) return res.status(400).json({ error: 'ID inválido' });
+
+    const { ativo } = req.body;
+    if (typeof ativo !== 'boolean') {
+      return res.status(400).json({ error: 'Campo "ativo" deve ser boolean' });
+    }
+
+    // Atualiza o status alterando a validade da assinatura
+    // Se ativo = false, seta assinatura para data passada
+    // Se ativo = true, seta assinatura para 31 dias à frente
+    const novaDataValidade = ativo 
+      ? new Date(Date.now() + 31 * 24 * 60 * 60 * 1000) // 31 dias no futuro
+      : new Date('2020-01-01'); // Data no passado = inativo
+
+    await prisma.estabelecimento.update({
+      where: { id: estabId },
+      data: { assinaturaValidaAte: novaDataValidade }
+    });
+
+    return res.json({ 
+      ok: true, 
+      message: `Estabelecimento ${ativo ? 'ativado' : 'desativado'} com sucesso`,
+      ativo 
+    });
+  } catch (err) {
+    console.error('[SuperAdmin] erro alterarStatus:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao alterar status' });
+  }
+}
+
+async function enviarNotificacao(req, res) {
+  try {
+    const estabId = Number(req.params.id);
+    if (!estabId) return res.status(400).json({ error: 'ID inválido' });
+
+    const { mensagem } = req.body;
+    if (!mensagem || !mensagem.trim()) {
+      return res.status(400).json({ error: 'Mensagem não pode estar vazia' });
+    }
+
+    // Verifica se estabelecimento existe
+    const estabelecimento = await prisma.estabelecimento.findUnique({
+      where: { id: estabId }
+    });
+
+    if (!estabelecimento) {
+      return res.status(404).json({ error: 'Estabelecimento não encontrado' });
+    }
+
+    // Aqui você pode implementar diferentes formas de notificação:
+    // 1. Salvar em uma tabela de notificações
+    // 2. Enviar email
+    // 3. Enviar SMS
+    // 4. Push notification
+    
+    // Por enquanto, vamos apenas logar e retornar sucesso
+    // Em produção, você implementaria o sistema de notificações real
+    console.log(`[SuperAdmin] Notificação para estabelecimento ${estabId} (${estabelecimento.nome}):`);
+    console.log(`Mensagem: ${mensagem}`);
+
+    // TODO: Implementar sistema de notificações
+    // Exemplo: await prisma.notificacao.create({ data: { estabelecimentoId: estabId, mensagem, lida: false } });
+
+    return res.json({ 
+      ok: true, 
+      message: 'Notificação enviada com sucesso',
+      notificacao: {
+        estabelecimento: estabelecimento.nome,
+        mensagem,
+        enviadoEm: new Date().toISOString()
+      }
+    });
+  } catch (err) {
+    console.error('[SuperAdmin] erro enviarNotificacao:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao enviar notificação' });
+  }
+}
+
+module.exports = { 
+  listar, 
+  atualizar, 
+  remover, 
+  registrarPagamentoManual,
+  resetarSenha,
+  alterarStatus,
+  enviarNotificacao
+};
+
 

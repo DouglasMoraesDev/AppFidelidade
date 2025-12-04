@@ -142,18 +142,20 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
         </select>
 
         {selectedEst && (
-          <div className="mt-4 p-4 bg-background/50 rounded-md space-y-2 text-sm">
-            <p><strong>Nome:</strong> {selectedEst.name}</p>
-            <p><strong>Email:</strong> {selectedEst.email || 'Não informado'}</p>
-            <p><strong>Usuário:</strong> {selectedEst.username}</p>
-            <p><strong>Clientes:</strong> {selectedEst.clients.length}</p>
-            <p><strong>Pontos para Voucher:</strong> {selectedEst.pointsForVoucher}</p>
-            <p>
-              <strong>Status:</strong>{' '}
-              <span className={selectedEst.paymentHistory && selectedEst.paymentHistory.length > 0 ? 'text-green-400' : 'text-red-400'}>
-                {selectedEst.paymentHistory && selectedEst.paymentHistory.length > 0 ? 'Ativa' : 'Expirada'}
-              </span>
-            </p>
+          <div className="mt-4 p-4 bg-background/50 rounded-md space-y-2 text-sm max-h-64 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <p><strong>Nome:</strong> {selectedEst.name}</p>
+              <p><strong>Email:</strong> {selectedEst.email || 'Não informado'}</p>
+              <p><strong>Usuário:</strong> {selectedEst.username}</p>
+              <p><strong>Clientes:</strong> {selectedEst.clients.length}</p>
+              <p><strong>Pontos para Voucher:</strong> {selectedEst.pointsForVoucher}</p>
+              <p>
+                <strong>Status:</strong>{' '}
+                <span className={selectedEst.paymentHistory && selectedEst.paymentHistory.length > 0 ? 'text-green-400' : 'text-red-400'}>
+                  {selectedEst.paymentHistory && selectedEst.paymentHistory.length > 0 ? 'Ativa' : 'Expirada'}
+                </span>
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -161,7 +163,8 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
       {/* Tabs de Ações */}
       {selectedEstablishment && (
         <div className="bg-surface rounded-lg shadow-lg overflow-hidden">
-          <div className="flex border-b border-background">
+          {/* Desktop Tabs */}
+          <div className="hidden md:flex border-b border-background">
             <button
               onClick={() => setActiveTab('password')}
               className={`flex-1 px-6 py-4 font-semibold transition-colors ${
@@ -206,6 +209,20 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
               <EnvelopeIcon className="w-5 h-5 inline-block mr-2" />
               Notificação
             </button>
+          </div>
+
+          {/* Mobile Select */}
+          <div className="md:hidden p-4 border-b border-background">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-secondary focus:outline-none"
+            >
+              <option value="password">🔑 Resetar Senha</option>
+              <option value="payment">💰 Estender Assinatura</option>
+              <option value="status">🔄 Ativar/Desativar</option>
+              <option value="notification">📧 Notificação</option>
+            </select>
           </div>
 
           <div className="p-6">

@@ -201,6 +201,30 @@ export async function superAdminAddPayment(secret: string, id: number, dataPagam
   }, { skipAuth: true });
 }
 
+export async function superAdminResetPassword(secret: string, id: number, novaSenha: string) {
+  return request(`/api/superadmin/estabelecimentos/${id}/resetar-senha`, {
+    method: 'POST',
+    body: JSON.stringify({ novaSenha }),
+    headers: superAdminOptions(secret).headers
+  }, { skipAuth: true });
+}
+
+export async function superAdminToggleStatus(secret: string, id: number, ativo: boolean) {
+  return request(`/api/superadmin/estabelecimentos/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ativo }),
+    headers: superAdminOptions(secret).headers
+  }, { skipAuth: true });
+}
+
+export async function superAdminSendNotification(secret: string, id: number, mensagem: string) {
+  return request(`/api/superadmin/estabelecimentos/${id}/notificacao`, {
+    method: 'POST',
+    body: JSON.stringify({ mensagem }),
+    headers: superAdminOptions(secret).headers
+  }, { skipAuth: true });
+}
+
 export default {
   login,
   changePassword,
@@ -220,5 +244,8 @@ export default {
   superAdminListEstablishments,
   superAdminUpdateEstablishment,
   superAdminDeleteEstablishment,
-  superAdminAddPayment
+  superAdminAddPayment,
+  superAdminResetPassword,
+  superAdminToggleStatus,
+  superAdminSendNotification
 };
