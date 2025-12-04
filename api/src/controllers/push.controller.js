@@ -2,18 +2,32 @@ const webpush = require('web-push');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-// Configurar VAPID keys
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL || 'mailto:appfidelidade@example.com',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+// Configurar VAPID keys - só se estiverem definidas
+let vapidConfigured = false;
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL || 'mailto:appfidelidade@example.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+    vapidConfigured = true;
+    console.log('[Push] VAPID configurado com sucesso');
+  } catch (error) {
+    console.error('[Push] Erro ao configurar VAPID:', error);
+  }
+} else {
+  console.warn('[Push] VAPID keys não configuradas - push notifications desabilitadas');
+}
 
 /**
  * Retorna a chave pública VAPID para o frontend
  */
 const getPublicKey = async (req, res) => {
   try {
+    if (!vapidConfigured) {
+      return res.status(503).json({ error: 'Push notifications não configuradas' });
+    }
     res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
   } catch (error) {
     console.error('Erro ao obter chave pública:', error);
@@ -26,6 +40,10 @@ const getPublicKey = async (req, res) => {
  */
 const subscribe = async (req, res) => {
   try {
+    if (!vapidConfigured) {
+      return res.status(503).json({ error: 'Push notifications não configuradas' });
+    }
+    
     const { subscription } = req.body;
     const estabelecimentoId = req.user.estabelecimentoId;
 
@@ -93,6 +111,11 @@ const unsubscribe = async (req, res) => {
  */
 const sendPushToEstabelecimento = async (estabelecimentoId, payload) => {
   try {
+    if (!vapidConfigured) {
+      console.log('[Push] VAPID não configurado - push desabilitado');
+      return { success: 0, failed: 0, disabled: true };
+    }
+    
     const subscriptions = await prisma.pushSubscription.findMany({
       where: { estabelecimentoId }
     });
@@ -142,6 +165,11 @@ const sendPushToEstabelecimento = async (estabelecimentoId, payload) => {
  */
 const sendPushToAll = async (payload) => {
   try {
+    if (!vapidConfigured) {
+      console.log('[Push] VAPID não configurado - push desabilitado');
+      return { success: 0, failed: 0, total: 0, disabled: true };
+    }
+    
     const subscriptions = await prisma.pushSubscription.findMany();
 
     if (subscriptions.length === 0) {
