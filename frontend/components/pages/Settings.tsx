@@ -6,7 +6,6 @@ import { Theme } from '../../types';
 
 interface SettingsProps {
   logoUrl: string;
-  appName: string;
   voucherMessage: string;
   publicLink: string;
   slug?: string;
@@ -16,7 +15,6 @@ interface SettingsProps {
   onLogoUpload: (file: File) => void;
   onConfigSave: (payload: { 
     mensagem_voucher?: string; 
-    nome_app?: string; 
     link_consulta?: string;
     tema_config?: string;
     auto_notificar_voucher?: boolean;
@@ -39,7 +37,6 @@ const fonts = [
 
 const Settings: React.FC<SettingsProps> = ({
   logoUrl,
-  appName,
   voucherMessage,
   publicLink,
   slug,
@@ -53,7 +50,6 @@ const Settings: React.FC<SettingsProps> = ({
   lastPaymentDate,
   onLogout
 }) => {
-  const [localAppName, setLocalAppName] = useState(appName);
   const [localMessage, setLocalMessage] = useState(voucherMessage);
   const [customLink, setCustomLink] = useState(publicLink);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -76,10 +72,6 @@ const Settings: React.FC<SettingsProps> = ({
   const [showPasswordSuccess, setShowPasswordSuccess] = useState(false);
   const [aceitarNotificacoes, setAceitarNotificacoes] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-
-  useEffect(() => {
-    setLocalAppName(appName);
-  }, [appName]);
 
   useEffect(() => {
     setLocalMessage(voucherMessage);
@@ -185,7 +177,6 @@ const Settings: React.FC<SettingsProps> = ({
       
       // Não salvar tema_config pois está travado (premium)
       await onConfigSave({ 
-        nome_app: localAppName, 
         mensagem_voucher: localMessage, 
         link_consulta: linkToSave,
         // tema_config: JSON.stringify(localTheme), // REMOVIDO - funcionalidade premium
@@ -256,10 +247,6 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
 
           <form onSubmit={handleConfigSubmit} className="space-y-3 sm:space-y-4">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium text-on-surface-secondary mb-1">Nome do App</label>
-              <input className="w-full bg-background text-on-surface p-2.5 sm:p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-sm sm:text-base" value={localAppName} onChange={(e) => setLocalAppName(e.target.value)} />
-            </div>
             <div>
               <label className="block text-xs sm:text-sm font-medium text-on-surface-secondary mb-1">Mensagem Automática do Voucher</label>
               <textarea className="w-full bg-background text-on-surface p-2.5 sm:p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-sm sm:text-base resize-none" rows={3} value={localMessage} onChange={(e) => setLocalMessage(e.target.value)} />
