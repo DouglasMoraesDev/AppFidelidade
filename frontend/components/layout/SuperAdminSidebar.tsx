@@ -25,7 +25,8 @@ const SuperAdminSidebar: React.FC<SuperAdminSidebarProps> = ({ isOpen, setIsOpen
 
   const navItems = [
     { page: 'superDashboard' as SuperAdminPage, label: 'Dashboard', icon: <HomeIcon className="h-5 w-5" /> },
-    { page: 'manageEstablishments' as SuperAdminPage, label: 'Gerenciar', icon: <WrenchScrewdriverIcon className="h-5 w-5" /> },
+    { page: 'manageEstablishments' as SuperAdminPage, label: 'Estabelecimentos', icon: <WrenchScrewdriverIcon className="h-5 w-5" /> },
+    { page: 'advancedTools' as SuperAdminPage, label: 'Ferramentas Avançadas', icon: <ShieldCheckIcon className="h-5 w-5" /> },
     { page: 'themeSettings' as SuperAdminPage, label: 'Aparência do App', icon: <PaintBrushIcon className="h-5 w-5" /> },
   ];
 

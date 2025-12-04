@@ -10,7 +10,7 @@ export interface Client {
 }
 
 export type Page = 'dashboard' | 'addClient' | 'addPoints' | 'clients' | 'notifications' | 'settings' | 'pointsLink';
-export type SuperAdminPage = 'superDashboard' | 'manageEstablishments' | 'themeSettings';
+export type SuperAdminPage = 'superDashboard' | 'manageEstablishments' | 'themeSettings' | 'advancedTools';
 
 export interface Theme {
   primary: string;

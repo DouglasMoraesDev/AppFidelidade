@@ -18,6 +18,7 @@ import SuperAdminLayout from './components/layout/SuperAdminLayout';
 import SuperAdminDashboard from './components/pages/SuperAdminDashboard';
 import SuperAdminEstablishments from './components/pages/SuperAdminEstablishments';
 import SuperAdminThemeSettings from './components/pages/SuperAdminThemeSettings';
+import SuperAdminAdvanced from './components/pages/SuperAdminAdvanced';
 import TelaPontosPublica from './src/components/TelaPontosPublica';
 import VoucherConfirmationModal from './components/VoucherConfirmationModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -49,6 +50,16 @@ const DEFAULT_LOGO = '/icon-192x192.png';
 const SUPER_ADMIN_SECRET = 'Dooug#525210';
 
 const App: React.FC = () => {
+  // Detectar se está acessando via URL única de Super Admin
+  const isSuperAdminUrl = useMemo(
+    () => {
+      if (typeof window === 'undefined') return false;
+      const path = window.location.pathname.toLowerCase();
+      return path === '/admin-douglas-2025' || path === '/admin-douglas-2025/';
+    },
+    []
+  );
+
   const [establishments, setEstablishments] = useState<Establishment[]>([]);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [currentSuperAdminPage, setCurrentSuperAdminPage] = useState<SuperAdminPage>('superDashboard');
@@ -61,7 +72,7 @@ const App: React.FC = () => {
     fontFamily: "'Inter', sans-serif",
   });
 
-  const [currentView, setCurrentView] = useState<'chooser' | 'establishmentAuth' | 'superAdminAuth' | 'establishmentApp' | 'superAdminApp'>('chooser');
+  const [currentView, setCurrentView] = useState<'chooser' | 'establishmentAuth' | 'superAdminAuth' | 'establishmentApp' | 'superAdminApp'>(isSuperAdminUrl ? 'superAdminAuth' : 'chooser');
   const [authPage, setAuthPage] = useState<'login' | 'register'>('login');
   const [loggedInEstablishment, setLoggedInEstablishment] = useState<Establishment | null>(null);
   const [showPaymentPage, setShowPaymentPage] = useState(false);
@@ -639,6 +650,47 @@ const App: React.FC = () => {
     setEstablishments([]);
   }, []);
 
+  // Ferramentas Avançadas do Super Admin
+  const handleResetPassword = useCallback(async (establishmentId: number, newPassword: string) => {
+    if (!superAdminSecret) throw new Error('Não autorizado');
+    // TODO: Implementar endpoint no backend
+    console.log('Reset password for', establishmentId, 'to', newPassword);
+    alert('Funcionalidade de reset de senha será implementada no backend em breve!');
+  }, [superAdminSecret]);
+
+  const handleForcePayment = useCallback(async (establishmentId: number, months: number) => {
+    if (!superAdminSecret) throw new Error('Não autorizado');
+    // Adicionar múltiplos pagamentos
+    try {
+      for (let i = 0; i < months; i++) {
+        const date = new Date();
+        date.setMonth(date.getMonth() + i);
+        await superAdminAddPayment(superAdminSecret, establishmentId, date.toISOString().split('T')[0]);
+      }
+      // Recarregar lista
+      const data = await superAdminListEstablishments(superAdminSecret);
+      if (data?.estabelecimentos) {
+        setEstablishments(data.estabelecimentos.map(mapSnapshotToEstablishment));
+      }
+    } catch (err: any) {
+      throw new Error(err?.message || 'Erro ao estender assinatura');
+    }
+  }, [superAdminSecret]);
+
+  const handleToggleActive = useCallback(async (establishmentId: number, active: boolean) => {
+    if (!superAdminSecret) throw new Error('Não autorizado');
+    // TODO: Implementar endpoint no backend
+    console.log('Toggle active for', establishmentId, 'to', active);
+    alert('Funcionalidade de ativar/desativar será implementada no backend em breve!');
+  }, [superAdminSecret]);
+
+  const handleSendNotification = useCallback(async (establishmentId: number, message: string) => {
+    if (!superAdminSecret) throw new Error('Não autorizado');
+    // TODO: Implementar endpoint no backend
+    console.log('Send notification to', establishmentId, ':', message);
+    alert('Funcionalidade de notificação será implementada no backend em breve!');
+  }, [superAdminSecret]);
+
   const renderEstablishmentPage = () => {
     if (!loggedInEstablishment) return null;
     switch (currentPage) {
@@ -697,6 +749,16 @@ const App: React.FC = () => {
             onAddPayment={handleSuperAdminAddPayment}
           />
         );
+      case 'advancedTools':
+        return (
+          <SuperAdminAdvanced
+            establishments={establishments}
+            onResetPassword={handleResetPassword}
+            onForcePayment={handleForcePayment}
+            onToggleActive={handleToggleActive}
+            onSendNotification={handleSendNotification}
+          />
+        );
       case 'themeSettings':
         return <SuperAdminThemeSettings currentTheme={theme} onThemeChange={setTheme} />;
       default:
@@ -722,7 +784,7 @@ const App: React.FC = () => {
         }
         return <LoginPage onLogin={handleLogin} onNavigateToRegister={() => setAuthPage('register')} onNavigateToChooser={() => setCurrentView('chooser')} loading={loadingSnapshot} />;
       case 'superAdminAuth':
-        return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={() => setCurrentView('chooser')} />;
+        return <SuperAdminLoginPage onLogin={handleSuperAdminLogin} onNavigateToChooser={isSuperAdminUrl ? undefined : () => setCurrentView('chooser')} />;
       case 'establishmentApp':
         if (!loggedInEstablishment) {
           return <PaymentPage onPaymentSuccess={handlePaymentSuccess} loading={loadingSnapshot} />;

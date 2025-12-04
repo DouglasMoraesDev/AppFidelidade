@@ -3,7 +3,7 @@ import { ShieldCheckIcon, UserIcon, LockClosedIcon } from '../icons/Icons';
 
 interface SuperAdminLoginPageProps {
     onLogin: (username: string, passwordHash: string) => void;
-    onNavigateToChooser: () => void;
+    onNavigateToChooser?: () => void;
 }
 
 const SuperAdminLoginPage: React.FC<SuperAdminLoginPageProps> = ({ onLogin, onNavigateToChooser }) => {
@@ -68,11 +68,13 @@ const SuperAdminLoginPage: React.FC<SuperAdminLoginPageProps> = ({ onLogin, onNa
                         </button>
                     </form>
                 </div>
-                 <div className="text-center mt-6">
-                     <button onClick={onNavigateToChooser} className="text-sm text-on-surface-secondary hover:text-on-surface">
-                        Voltar à seleção de perfil
-                     </button>
-                </div>
+                 {onNavigateToChooser && (
+                    <div className="text-center mt-6">
+                        <button onClick={onNavigateToChooser} className="text-sm text-on-surface-secondary hover:text-on-surface">
+                            Voltar à seleção de perfil
+                        </button>
+                    </div>
+                 )}
             </div>
         </div>
     );
