@@ -526,45 +526,6 @@ const Settings: React.FC<SettingsProps> = ({
             )}
           </div>
 
-          {/* Botão de Salvar Alterações - Movido para o final */}
-          <div className="border-t border-background pt-6 mt-6">
-            <button type="submit" className="w-full bg-primary text-white font-bold py-3 sm:py-4 rounded-md hover:bg-primary-focus transition-colors text-base sm:text-lg flex items-center justify-center gap-2 shadow-lg">
-              {saveSuccess ? (
-                <>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Salvo com sucesso!</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                  </svg>
-                  <span>Salvar Todas as Alterações</span>
-                </>
-              )}
-            </button>
-            {saveSuccess && (
-              <div className="bg-green-500/20 border border-green-500/40 text-green-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Todas as configurações foram salvas com sucesso!
-              </div>
-            )}
-            {saveError && (
-              <div className="bg-red-500/20 border border-red-500/40 text-red-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {saveError}
-              </div>
-            )}
-            <p className="text-xs text-on-surface-secondary mt-3 text-center">
-              💡 Todas as alterações acima (nome, mensagem, notificações e automações) serão salvas ao clicar neste botão.
-            </p>
-          </div>
         </form>
         </div>
 
@@ -594,9 +555,51 @@ const Settings: React.FC<SettingsProps> = ({
                 <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full bg-background text-on-surface p-2 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none text-sm sm:text-base" />
               </div>
               <button type="submit" className="w-full flex items-center justify-center gap-2 bg-primary text-white py-2 sm:py-2.5 rounded-md hover:bg-primary-focus text-sm sm:text-base">
-                <LockClosedIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <LockClosedIcon className="w-4 h-4 sm:w-5 sm:w-5" />
                 Trocar Senha
               </button>
+            </form>
+          </div>
+
+          {/* Botão de Salvar Configurações - Movido para cá */}
+          <div className="border-t border-background pt-3 sm:pt-4">
+            <form onSubmit={handleConfigSubmit}>
+              <button type="submit" className="w-full bg-primary text-white font-bold py-3 sm:py-4 rounded-md hover:bg-primary-focus transition-colors text-base sm:text-lg flex items-center justify-center gap-2 shadow-lg">
+                {saveSuccess ? (
+                  <>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Salvo com sucesso!</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Salvar Todas as Configurações</span>
+                  </>
+                )}
+              </button>
+              {saveSuccess && (
+                <div className="bg-green-500/20 border border-green-500/40 text-green-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Todas as configurações foram salvas com sucesso!
+                </div>
+              )}
+              {saveError && (
+                <div className="bg-red-500/20 border border-red-500/40 text-red-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {saveError}
+                </div>
+              )}
+              <p className="text-xs text-on-surface-secondary mt-3 text-center">
+                💡 Logo, mensagem, notificações e automações serão salvos.
+              </p>
             </form>
           </div>
 
