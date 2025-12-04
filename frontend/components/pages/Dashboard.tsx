@@ -3,6 +3,7 @@
 import React from 'react';
 import { Client } from '../../types';
 import { UsersIcon, GiftIcon, ClockIcon, EnvelopeIcon } from '../icons/Icons';
+import { NotificationBanner } from '../NotificationBanner';
 
 interface DashboardProps {
   clients: Client[];
@@ -45,6 +46,9 @@ const Dashboard: React.FC<DashboardProps> = ({ clients, totalVouchersSent, vouch
         <h1 className="text-3xl font-bold text-on-surface mb-2">Resumo</h1>
         <p className="text-on-surface-secondary">Bem-vindo, <span className="font-semibold text-on-surface">{establishmentName}</span>! Aqui está o resumo do seu negócio.</p>
       </div>
+
+      {/* Banner de Notificações */}
+      <NotificationBanner />
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard icon={<UsersIcon className="h-6 w-6 text-white"/>} title="Total de Clientes" value={clients.length} color="bg-blue-500" />

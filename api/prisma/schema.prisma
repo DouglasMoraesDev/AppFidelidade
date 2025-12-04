@@ -33,6 +33,7 @@ model Estabelecimento {
   cartoes  CartaoFidelidade[]
   vouchers Voucher[]
   pagamentos MensalidadePagamento[]
+  notificacoes Notificacao[]
 }
 
 model Usuario {
@@ -106,3 +107,18 @@ model MensalidadePagamento {
 
   estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
 }
+
+model Notificacao {
+  id                Int      @id @default(autoincrement())
+  estabelecimentoId Int
+  titulo            String
+  mensagem          String   @db.Text
+  tipo              String   @default("info") // info, aviso, promocao, atualizacao
+  lida              Boolean  @default(false)
+  criadaEm          DateTime @default(now())
+
+  estabelecimento Estabelecimento @relation(fields: [estabelecimentoId], references: [id], onDelete: Cascade)
+
+  @@index([estabelecimentoId, lida])
+}
+

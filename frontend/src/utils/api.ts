@@ -225,6 +225,31 @@ export async function superAdminSendNotification(secret: string, id: number, men
   }, { skipAuth: true });
 }
 
+// === Notificações ===
+export async function fetchNotificacoes() {
+  return request('/api/notificacoes', {
+    method: 'GET'
+  });
+}
+
+export async function marcarNotificacaoLida(notificacaoId: number) {
+  return request(`/api/notificacoes/${notificacaoId}/marcar-lida`, {
+    method: 'PATCH'
+  });
+}
+
+export async function marcarTodasNotificacoesLidas() {
+  return request('/api/notificacoes/marcar-todas-lidas', {
+    method: 'PATCH'
+  });
+}
+
+export async function contarNotificacoesNaoLidas() {
+  return request('/api/notificacoes/nao-lidas/count', {
+    method: 'GET'
+  });
+}
+
 export default {
   login,
   changePassword,
@@ -247,5 +272,9 @@ export default {
   superAdminAddPayment,
   superAdminResetPassword,
   superAdminToggleStatus,
-  superAdminSendNotification
+  superAdminSendNotification,
+  fetchNotificacoes,
+  marcarNotificacaoLida,
+  marcarTodasNotificacoesLidas,
+  contarNotificacoesNaoLidas
 };

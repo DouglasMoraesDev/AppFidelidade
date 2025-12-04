@@ -292,27 +292,27 @@ async function enviarNotificacao(req, res) {
       return res.status(404).json({ error: 'Estabelecimento não encontrado' });
     }
 
-    // Aqui você pode implementar diferentes formas de notificação:
-    // 1. Salvar em uma tabela de notificações
-    // 2. Enviar email
-    // 3. Enviar SMS
-    // 4. Push notification
-    
-    // Por enquanto, vamos apenas logar e retornar sucesso
-    // Em produção, você implementaria o sistema de notificações real
-    console.log(`[SuperAdmin] Notificação para estabelecimento ${estabId} (${estabelecimento.nome}):`);
-    console.log(`Mensagem: ${mensagem}`);
+    // Cria a notificação no banco de dados
+    const notificacao = await prisma.notificacao.create({
+      data: {
+        estabelecimentoId: estabId,
+        titulo: 'Mensagem do Administrador',
+        mensagem: mensagem.trim(),
+        tipo: 'info',
+        lida: false
+      }
+    });
 
-    // TODO: Implementar sistema de notificações
-    // Exemplo: await prisma.notificacao.create({ data: { estabelecimentoId: estabId, mensagem, lida: false } });
+    console.log(`[SuperAdmin] Notificação criada para estabelecimento ${estabId} (${estabelecimento.nome})`);
 
     return res.json({ 
       ok: true, 
       message: 'Notificação enviada com sucesso',
       notificacao: {
+        id: notificacao.id,
         estabelecimento: estabelecimento.nome,
-        mensagem,
-        enviadoEm: new Date().toISOString()
+        mensagem: notificacao.mensagem,
+        enviadoEm: notificacao.criadaEm
       }
     });
   } catch (err) {
