@@ -74,6 +74,8 @@ const Settings: React.FC<SettingsProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showPasswordSuccess, setShowPasswordSuccess] = useState(false);
+  const [aceitarNotificacoes, setAceitarNotificacoes] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
     setLocalAppName(appName);
@@ -124,8 +126,49 @@ const Settings: React.FC<SettingsProps> = ({
     setLembretePontos(lembretePontosProximos);
   }, [lembretePontosProximos]);
 
+  useEffect(() => {
+    // Verificar permissão de notificação ao carregar
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+      setAceitarNotificacoes(Notification.permission === 'granted');
+    }
+  }, []);
+
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) onLogoUpload(e.target.files[0]);
+  };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    if (enabled && notificationPermission !== 'granted') {
+      try {
+        // Solicitar permissão
+        const { subscribeToPush } = await import('../../src/utils/pushNotifications');
+        const token = localStorage.getItem('token');
+        if (token) {
+          const API_BASE = (window as any).API_BASE || 'https://appfidelidade-production.up.railway.app';
+          await subscribeToPush(API_BASE + '/api', token);
+          setNotificationPermission('granted');
+          setAceitarNotificacoes(true);
+        }
+      } catch (error) {
+        console.error('Erro ao configurar notificações:', error);
+        alert('Não foi possível ativar as notificações. Verifique as permissões do navegador.');
+        setAceitarNotificacoes(false);
+      }
+    } else if (!enabled) {
+      // Desabilitar notificações
+      try {
+        const { unsubscribeFromPush } = await import('../../src/utils/pushNotifications');
+        const token = localStorage.getItem('token');
+        if (token) {
+          const API_BASE = (window as any).API_BASE || 'https://appfidelidade-production.up.railway.app';
+          await unsubscribeFromPush(API_BASE + '/api', token);
+          setAceitarNotificacoes(false);
+        }
+      } catch (error) {
+        console.error('Erro ao desativar notificações:', error);
+      }
+    }
   };
 
   const handleConfigSubmit = async (e: React.FormEvent) => {
@@ -242,66 +285,71 @@ const Settings: React.FC<SettingsProps> = ({
                 </div>
               )}
             </div>
-            <button type="submit" className="w-full bg-primary text-white font-bold py-2.5 sm:py-3 rounded-md hover:bg-primary-focus transition-colors text-sm sm:text-base flex items-center justify-center gap-2">
-              {saveSuccess ? (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span>Salvo com sucesso!</span>
-                </>
-              ) : (
-                <span>Salvar Alterações</span>
-              )}
-            </button>
-            {saveSuccess && (
-              <div className="bg-green-500/20 border border-green-500/40 text-green-400 px-4 py-2 rounded-md text-sm flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Configurações salvas com sucesso!
-              </div>
-            )}
-            {saveError && (
-              <div className="bg-red-500/20 border border-red-500/40 text-red-400 px-4 py-2 rounded-md text-sm flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {saveError}
-              </div>
-            )}
-          </form>
 
-          {/* Configurações de Automação */}
-          <div className="border-t border-background pt-6 mt-6">
-            <h2 className="text-lg font-semibold text-on-surface mb-4">Automações</h2>
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoNotify}
-                  onChange={(e) => setAutoNotify(e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
-                />
-                <div>
-                  <p className="text-on-surface font-medium">Notificar automaticamente quando cliente ganha voucher</p>
-                  <p className="text-xs text-on-surface-secondary">O voucher será enviado automaticamente via WhatsApp quando o cliente atingir os pontos necessários</p>
-                </div>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={lembretePontos}
-                  onChange={(e) => setLembretePontos(e.target.checked)}
-                  className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
-                />
-                <div>
-                  <p className="text-on-surface font-medium">Lembrar clientes próximos do voucher</p>
-                  <p className="text-xs text-on-surface-secondary">Receba notificações quando clientes estiverem próximos de ganhar voucher</p>
-                </div>
-              </label>
+            {/* Configurações de Notificações Push */}
+            <div className="border-t border-background pt-6 mt-6">
+              <h2 className="text-lg font-semibold text-on-surface mb-4">Notificações</h2>
+              <div className="space-y-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={aceitarNotificacoes}
+                    onChange={(e) => handleNotificationToggle(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <div>
+                    <p className="text-on-surface font-medium">Aceitar notificações push do sistema</p>
+                    <p className="text-xs text-on-surface-secondary">
+                      Ao ativar, você receberá notificações do sistema sobre atualizações, novidades e mensagens importantes do administrador, mesmo quando o app estiver fechado ou minimizado.
+                    </p>
+                    {notificationPermission === 'denied' && (
+                      <div className="mt-2 bg-red-500/20 border border-red-500/40 text-red-400 px-3 py-2 rounded text-xs">
+                        ⚠️ As notificações estão bloqueadas no navegador. Ative nas configurações do navegador para receber notificações.
+                      </div>
+                    )}
+                    {notificationPermission === 'granted' && aceitarNotificacoes && (
+                      <div className="mt-2 bg-green-500/20 border border-green-500/40 text-green-400 px-3 py-2 rounded text-xs flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Notificações ativadas com sucesso!
+                      </div>
+                    )}
+                  </div>
+                </label>
+              </div>
             </div>
-          </div>
+
+            {/* Configurações de Automação */}
+            <div className="border-t border-background pt-6 mt-6">
+              <h2 className="text-lg font-semibold text-on-surface mb-4">Automações</h2>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoNotify}
+                    onChange={(e) => setAutoNotify(e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <div>
+                    <p className="text-on-surface font-medium">Notificar automaticamente quando cliente ganha voucher</p>
+                    <p className="text-xs text-on-surface-secondary">O voucher será enviado automaticamente via WhatsApp quando o cliente atingir os pontos necessários</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={lembretePontos}
+                    onChange={(e) => setLembretePontos(e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-600 bg-background text-primary focus:ring-2 focus:ring-primary"
+                  />
+                  <div>
+                    <p className="text-on-surface font-medium">Lembrar clientes próximos do voucher</p>
+                    <p className="text-xs text-on-surface-secondary">Receba notificações quando clientes estiverem próximos de ganhar voucher</p>
+                  </div>
+                </label>
+              </div>
+            </div>
 
           {/* Editor de Tema - TRAVADO */}
           <div className="border-t border-background pt-6 mt-6">
@@ -490,6 +538,47 @@ const Settings: React.FC<SettingsProps> = ({
               </div>
             )}
           </div>
+
+          {/* Botão de Salvar Alterações - Movido para o final */}
+          <div className="border-t border-background pt-6 mt-6">
+            <button type="submit" className="w-full bg-primary text-white font-bold py-3 sm:py-4 rounded-md hover:bg-primary-focus transition-colors text-base sm:text-lg flex items-center justify-center gap-2 shadow-lg">
+              {saveSuccess ? (
+                <>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Salvo com sucesso!</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  <span>Salvar Todas as Alterações</span>
+                </>
+              )}
+            </button>
+            {saveSuccess && (
+              <div className="bg-green-500/20 border border-green-500/40 text-green-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Todas as configurações foram salvas com sucesso!
+              </div>
+            )}
+            {saveError && (
+              <div className="bg-red-500/20 border border-red-500/40 text-red-400 px-4 py-3 rounded-md text-sm flex items-center gap-2 mt-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                {saveError}
+              </div>
+            )}
+            <p className="text-xs text-on-surface-secondary mt-3 text-center">
+              💡 Todas as alterações acima (nome, mensagem, notificações e automações) serão salvas ao clicar neste botão.
+            </p>
+          </div>
+        </form>
         </div>
 
         <div className="bg-surface p-4 sm:p-6 rounded-lg shadow-lg space-y-4 sm:space-y-6 max-w-full overflow-hidden">
