@@ -795,7 +795,17 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'chooser':
-        return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+        return <ChooserPage 
+          onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} 
+          onCreateAccount={() => {
+            setAuthPage('register');
+            setCurrentView('establishmentAuth');
+          }}
+          onLogin={() => {
+            setAuthPage('login');
+            setCurrentView('establishmentAuth');
+          }}
+        />;
       case 'establishmentAuth':
         if (authPage === 'register') {
           return <RegisterPage onRegister={handleRegister} onNavigateToLogin={() => setAuthPage('login')} />;
@@ -819,7 +829,17 @@ const App: React.FC = () => {
           </SuperAdminLayout>
         );
       default:
-        return <ChooserPage onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} />;
+        return <ChooserPage 
+          onSelectRole={(role) => setCurrentView(role === 'establishment' ? 'establishmentAuth' : 'superAdminAuth')} 
+          onCreateAccount={() => {
+            setAuthPage('register');
+            setCurrentView('establishmentAuth');
+          }}
+          onLogin={() => {
+            setAuthPage('login');
+            setCurrentView('establishmentAuth');
+          }}
+        />;
     }
   };
 

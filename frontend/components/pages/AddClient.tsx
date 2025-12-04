@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import SuccessModal from '../SuccessModal';
+import { InputField } from '../InputField';
+import { UserIcon, PhoneIcon, StarIcon } from '../icons/Icons';
+import { validatePhone, unmask, ERROR_MESSAGES, PLACEHOLDERS } from '../../src/utils/validations';
 
 interface AddClientProps {
   onAddClient: (client: { name: string; phone: string; points: number }) => void;
@@ -9,19 +12,36 @@ const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [points, setPoints] = useState(0);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [clientName, setClientName] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim()) {
-      setError('Nome e telefone são obrigatórios.');
+    
+    const newErrors: Record<string, string> = {};
+    
+    // Validação de nome
+    if (!name.trim()) {
+      newErrors.name = ERROR_MESSAGES.REQUIRED_FIELD;
+    }
+    
+    // Validação de telefone
+    if (!phone.trim()) {
+      newErrors.phone = ERROR_MESSAGES.REQUIRED_FIELD;
+    } else if (!validatePhone(phone)) {
+      newErrors.phone = ERROR_MESSAGES.PHONE_INVALID;
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
-    setError('');
+    
+    setErrors({});
     setClientName(name);
-    onAddClient({ name, phone, points });
+    // Remove máscara antes de enviar
+    onAddClient({ name, phone: unmask(phone), points });
     setName('');
     setPhone('');
     setPoints(0);
@@ -36,38 +56,38 @@ const AddClient: React.FC<AddClientProps> = ({ onAddClient }) => {
       </div>
       <div className="max-w-lg mx-auto bg-surface p-8 rounded-lg shadow-lg">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-on-surface-secondary mb-1">Nome *</label>
-            <input
-              id="name"
-              type="text"
-              className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-on-surface-secondary mb-1">Número (Telefone) *</label>
-            <input
-              id="phone"
-              type="tel"
-              className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="points" className="block text-sm font-medium text-on-surface-secondary mb-1">Pontos Iniciais</label>
-            <input
-              id="points"
-              type="number"
-              className="w-full bg-background text-on-surface p-3 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-              value={points}
-              onChange={e => setPoints(parseInt(e.target.value, 10) || 0)}
-              min="0"
-            />
-          </div>
-           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          <InputField
+            id="name"
+            label="Nome"
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            icon={<UserIcon className="h-5 w-5 text-on-surface-secondary" />}
+            placeholder={PLACEHOLDERS.NAME}
+            required
+            error={errors.name}
+          />
+          <InputField
+            id="phone"
+            label="Telefone"
+            type="tel"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            icon={<PhoneIcon className="h-5 w-5 text-on-surface-secondary" />}
+            placeholder={PLACEHOLDERS.PHONE}
+            mask="phone"
+            required
+            error={errors.phone}
+          />
+          <InputField
+            id="points"
+            label="Pontos Iniciais"
+            type="number"
+            value={points}
+            onChange={e => setPoints(parseInt(e.target.value, 10) || 0)}
+            icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />}
+            min={0}
+          />
           <button
             type="submit"
             className="w-full bg-primary text-white font-bold py-3 px-4 rounded-md hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300"

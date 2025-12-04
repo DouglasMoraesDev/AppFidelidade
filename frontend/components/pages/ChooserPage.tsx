@@ -3,9 +3,11 @@ import { BuildingOfficeIcon, UserPlusIcon, LoginIcon, GiftIcon } from '../icons/
 
 interface ChooserPageProps {
     onSelectRole: (role: 'establishment' | 'superAdmin') => void;
+    onCreateAccount?: () => void;
+    onLogin?: () => void;
 }
 
-const ChooserPage: React.FC<ChooserPageProps> = ({ onSelectRole }) => {
+const ChooserPage: React.FC<ChooserPageProps> = ({ onSelectRole, onCreateAccount, onLogin }) => {
     const [showLogin, setShowLogin] = useState(false);
 
     return (
@@ -45,7 +47,7 @@ const ChooserPage: React.FC<ChooserPageProps> = ({ onSelectRole }) => {
                 {!showLogin ? (
                     <>
                         <button
-                            onClick={() => onSelectRole('establishment')}
+                            onClick={() => onCreateAccount ? onCreateAccount() : onSelectRole('establishment')}
                             className="w-full flex items-center justify-center gap-4 bg-primary text-white font-bold py-4 px-6 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
                             <UserPlusIcon className="w-8 h-8"/>
@@ -54,7 +56,7 @@ const ChooserPage: React.FC<ChooserPageProps> = ({ onSelectRole }) => {
                         <div className="pt-4 border-t border-surface">
                             <p className="text-on-surface-secondary mb-3">Já é um parceiro?</p>
                             <button
-                                onClick={() => setShowLogin(true)}
+                                onClick={() => onLogin ? onLogin() : setShowLogin(true)}
                                 className="w-full flex items-center justify-center gap-4 bg-surface text-on-surface font-semibold py-3 px-6 rounded-lg hover:bg-secondary hover:text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-secondary transition-all duration-300"
                             >
                                 <LoginIcon className="w-6 h-6"/>
@@ -65,7 +67,7 @@ const ChooserPage: React.FC<ChooserPageProps> = ({ onSelectRole }) => {
                 ) : (
                     <>
                         <button
-                            onClick={() => onSelectRole('establishment')}
+                            onClick={() => onLogin ? onLogin() : onSelectRole('establishment')}
                             className="w-full flex items-center justify-center gap-4 bg-primary text-white font-bold py-4 px-6 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary transition-all duration-300 transform hover:scale-105 shadow-lg"
                         >
                             <BuildingOfficeIcon className="w-8 h-8"/>

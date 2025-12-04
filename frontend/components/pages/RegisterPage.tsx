@@ -12,7 +12,16 @@ import {
   StarIcon,
   PhotoIcon
 } from '../icons/Icons';
-import { postEstabelecimento, login as apiLogin } from '../../utils/api';
+import { postEstabelecimento, login as apiLogin } from '../../src/utils/api';
+import { InputField } from '../InputField';
+import { 
+  validateEmail, 
+  validateCPForCNPJ, 
+  validatePhone, 
+  unmask, 
+  ERROR_MESSAGES,
+  PLACEHOLDERS 
+} from '../../src/utils/validations';
 
 type RegisterData = {
   name: string;
@@ -53,13 +62,54 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Nome do estabelecimento é obrigatório.';
-    if (!formData.username.trim()) newErrors.username = 'Usuário de acesso é obrigatório.';
-    if (!formData.password) newErrors.password = 'Senha é obrigatória.';
-    if (formData.password && formData.password.length < 6) newErrors.password = 'A senha deve ter no mínimo 6 caracteres.';
-    if (formData.password !== confirmPassword) newErrors.confirmPassword = 'As senhas não coincidem.';
-    if (Number(formData.pointsForVoucher) <= 0) newErrors.pointsForVoucher = 'Pontos para voucher deve ser maior que zero.';
-    if (!logoFile) newErrors.logo = 'O logo é obrigatório.';
+    
+    // Nome obrigatório
+    if (!formData.name.trim()) {
+      newErrors.name = ERROR_MESSAGES.REQUIRED_FIELD;
+    }
+    
+    // Email opcional, mas se preenchido deve ser válido
+    if (formData.email && formData.email.trim() && !validateEmail(formData.email)) {
+      newErrors.email = ERROR_MESSAGES.EMAIL_INVALID;
+    }
+    
+    // CPF/CNPJ opcional, mas se preenchido deve ser válido
+    if (formData.cpfCnpj && formData.cpfCnpj.trim() && !validateCPForCNPJ(formData.cpfCnpj)) {
+      newErrors.cpfCnpj = ERROR_MESSAGES.CPFCNPJ_INVALID;
+    }
+    
+    // Telefone opcional, mas se preenchido deve ser válido
+    if (formData.phone && formData.phone.trim() && !validatePhone(formData.phone)) {
+      newErrors.phone = ERROR_MESSAGES.PHONE_INVALID;
+    }
+    
+    // Usuário obrigatório
+    if (!formData.username.trim()) {
+      newErrors.username = ERROR_MESSAGES.REQUIRED_FIELD;
+    }
+    
+    // Senha obrigatória e mínimo 6 caracteres
+    if (!formData.password) {
+      newErrors.password = ERROR_MESSAGES.REQUIRED_FIELD;
+    } else if (formData.password.length < 6) {
+      newErrors.password = ERROR_MESSAGES.PASSWORD_TOO_SHORT;
+    }
+    
+    // Confirmar senha
+    if (formData.password !== confirmPassword) {
+      newErrors.confirmPassword = 'As senhas não coincidem.';
+    }
+    
+    // Pontos para voucher
+    if (Number(formData.pointsForVoucher) <= 0) {
+      newErrors.pointsForVoucher = 'Pontos para voucher deve ser maior que zero.';
+    }
+    
+    // Logo obrigatório
+    if (!logoFile) {
+      newErrors.logo = 'O logo é obrigatório.';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -98,8 +148,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
       const fd = new FormData();
       fd.append('nome', formData.name);
       fd.append('endereco', formData.address || '');
-      fd.append('cpf_cnpj', formData.cpfCnpj || '');
-      fd.append('telefone', formData.phone || '');
+      // Remove máscaras antes de enviar
+      fd.append('cpf_cnpj', formData.cpfCnpj ? unmask(formData.cpfCnpj) : '');
+      fd.append('telefone', formData.phone ? unmask(formData.phone) : '');
       fd.append('email', formData.email || '');
       fd.append('mensagem_voucher', formData.voucherMessage || '');
       fd.append('nomeUsuario', formData.username);
@@ -168,18 +219,62 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
         <div className="bg-surface p-8 rounded-xl shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <InputField id="name" label="Nome do Estabelecimento *" type="text" value={formData.name} onChange={handleChange} icon={<BuildingOfficeIcon className="h-5 w-5 text-on-surface-secondary" />} />
-                {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
-              </div>
-              <InputField id="cpfCnpj" label="CPF / CNPJ" type="text" value={formData.cpfCnpj} onChange={handleChange} icon={<IdentificationIcon className="h-5 w-5 text-on-surface-secondary" />} />
+              <InputField 
+                id="name" 
+                label="Nome do Estabelecimento" 
+                type="text" 
+                value={formData.name} 
+                onChange={handleChange} 
+                icon={<BuildingOfficeIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.ESTABLISHMENT_NAME}
+                required
+                error={errors.name}
+              />
+              <InputField 
+                id="cpfCnpj" 
+                label="CPF / CNPJ" 
+                type="text" 
+                value={formData.cpfCnpj} 
+                onChange={handleChange} 
+                icon={<IdentificationIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.CPFCNPJ}
+                mask="cpfcnpj"
+                error={errors.cpfCnpj}
+              />
             </div>
 
-            <InputField id="address" label="Endereço" type="text" value={formData.address} onChange={handleChange} icon={<MapPinIcon className="h-5 w-5 text-on-surface-secondary" />} />
+            <InputField 
+              id="address" 
+              label="Endereço" 
+              type="text" 
+              value={formData.address} 
+              onChange={handleChange} 
+              icon={<MapPinIcon className="h-5 w-5 text-on-surface-secondary" />}
+              placeholder={PLACEHOLDERS.ADDRESS}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputField id="phone" label="Telefone" type="tel" value={formData.phone} onChange={handleChange} icon={<PhoneIcon className="h-5 w-5 text-on-surface-secondary" />} />
-              <InputField id="email" label="E-mail (opcional)" type="email" value={formData.email} onChange={handleChange} icon={<EnvelopeIcon className="h-5 w-5 text-on-surface-secondary" />} />
+              <InputField 
+                id="phone" 
+                label="Telefone" 
+                type="tel" 
+                value={formData.phone} 
+                onChange={handleChange} 
+                icon={<PhoneIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.PHONE}
+                mask="phone"
+                error={errors.phone}
+              />
+              <InputField 
+                id="email" 
+                label="E-mail (opcional)" 
+                type="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                icon={<EnvelopeIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.EMAIL}
+                error={errors.email}
+              />
             </div>
 
             <div>
@@ -196,27 +291,58 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-1">
-                <InputField id="pointsForVoucher" label="Pontos necessários para liberar o voucher *" type="number" value={formData.pointsForVoucher} onChange={handlePointsChange} icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} min={1} />
-                {errors.pointsForVoucher && <p className="text-red-400 text-xs mt-1">{errors.pointsForVoucher}</p>}
+                <InputField 
+                  id="pointsForVoucher" 
+                  label="Pontos necessários para liberar o voucher" 
+                  type="number" 
+                  value={formData.pointsForVoucher} 
+                  onChange={handlePointsChange} 
+                  icon={<StarIcon className="h-5 w-5 text-on-surface-secondary" />} 
+                  min={1}
+                  required
+                  error={errors.pointsForVoucher}
+                />
               </div>
             </div>
 
             <div className="border-t border-slate-600 my-2"></div>
 
-            <div>
-              <InputField id="username" label="Usuário de Acesso *" type="text" value={formData.username} onChange={handleChange} icon={<UserIcon className="h-5 w-5 text-on-surface-secondary" />} />
-              {errors.username && <p className="text-red-400 text-xs mt-1">{errors.username}</p>}
-            </div>
+            <InputField 
+              id="username" 
+              label="Usuário de Acesso" 
+              type="text" 
+              value={formData.username} 
+              onChange={handleChange} 
+              icon={<UserIcon className="h-5 w-5 text-on-surface-secondary" />}
+              required
+              error={errors.username}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <InputField id="password" label="Senha *" type="password" value={formData.password} onChange={handleChange} icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />} />
-                {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
-              </div>
-              <div>
-                <InputField id="confirmPassword" label="Confirmar Senha *" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />} />
-                {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>}
-              </div>
+              <InputField 
+                id="password" 
+                label="Senha" 
+                type="password" 
+                value={formData.password} 
+                onChange={handleChange} 
+                icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.PASSWORD}
+                required
+                error={errors.password}
+                autoComplete="new-password"
+              />
+              <InputField 
+                id="confirmPassword" 
+                label="Confirmar Senha" 
+                type="password" 
+                value={confirmPassword} 
+                onChange={(e) => setConfirmPassword(e.target.value)} 
+                icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />}
+                placeholder={PLACEHOLDERS.PASSWORD}
+                required
+                error={errors.confirmPassword}
+                autoComplete="new-password"
+              />
             </div>
 
             <div className="pt-2">
@@ -253,32 +379,5 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     </div>
   );
 };
-
-const InputField: React.FC<{
-  id: string;
-  label: string;
-  type: string;
-  value: string | number;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  icon: React.ReactNode;
-  min?: number;
-}> = ({ id, label, type, value, onChange, icon, ...props }) => (
-  <div>
-    <label htmlFor={id} className="block text-sm font-medium text-on-surface-secondary mb-1">{label}</label>
-    <div className="relative">
-      <span className="absolute inset-y-0 left-0 flex items-center pl-3">{icon}</span>
-      <input
-        id={id}
-        name={id}
-        type={type}
-        value={value as any}
-        onChange={onChange as any}
-        autoComplete={type === 'password' ? 'new-password' : undefined}
-        className="w-full bg-background text-on-surface p-3 pl-10 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-        {...props}
-      />
-    </div>
-  </div>
-);
 
 export default RegisterPage;

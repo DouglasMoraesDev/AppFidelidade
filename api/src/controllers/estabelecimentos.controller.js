@@ -6,6 +6,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { registrarPagamento } = require('../services/assinatura.service');
+const { validateEmail, validateCPForCNPJ, validatePhone } = require('../utils/validations');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'troque_esta_senha';
 // Usar URL de produção se estiver em produção, senão usar variável de ambiente ou localhost
@@ -39,6 +40,21 @@ async function criarEstabelecimento(req, res) {
     if (!nome) return res.status(400).json({ error: 'nome é obrigatório' });
     if (!nomeUsuario) return res.status(400).json({ error: 'nomeUsuario é obrigatório' });
     if (!senha) return res.status(400).json({ error: 'senha é obrigatória' });
+
+    // Validação de email
+    if (email && !validateEmail(email)) {
+      return res.status(400).json({ error: 'Email inválido. Use o formato: exemplo@dominio.com' });
+    }
+
+    // Validação de CPF/CNPJ
+    if (cpf_cnpj && !validateCPForCNPJ(cpf_cnpj)) {
+      return res.status(400).json({ error: 'CPF ou CNPJ inválido' });
+    }
+
+    // Validação de telefone
+    if (telefone && !validatePhone(telefone)) {
+      return res.status(400).json({ error: 'Telefone inválido. Use o formato: (99) 99999-9999' });
+    }
 
     if (email) {
       const existente = await prisma.estabelecimento.findUnique({ where: { email } }).catch(() => null);

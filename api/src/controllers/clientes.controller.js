@@ -1,6 +1,7 @@
 const prisma = require('../config/prismaClient');
 const { v4: uuidv4 } = require('uuid');
 const { assertMensalidadeAtiva } = require('../services/assinatura.service');
+const { validatePhone } = require('../utils/validations');
 
 function limparTelefone(telefone) {
   return String(telefone || '').replace(/\D/g, '');
@@ -25,9 +26,13 @@ async function criarCliente(req, res) {
     const { nome, telefone, pontosIniciais = 0 } = req.body;
     if (!nome || !telefone) return res.status(400).json({ error: 'nome e telefone são obrigatórios' });
 
-    await assertMensalidadeAtiva(estabelecimentoId);
-
+    // Validação de telefone
     const telefoneLimpo = limparTelefone(telefone);
+    if (!validatePhone(telefoneLimpo)) {
+      return res.status(400).json({ error: 'Telefone inválido. Use o formato: (99) 99999-9999' });
+    }
+
+    await assertMensalidadeAtiva(estabelecimentoId);
 
     const cartaoExistente = await prisma.cartaoFidelidade.findFirst({
       where: {
@@ -222,6 +227,12 @@ async function atualizarCliente(req, res) {
 
     const { nome, telefone, pontos } = req.body;
     if (!nome || !telefone) return res.status(400).json({ error: 'Nome e telefone são obrigatórios' });
+
+    // Validação de telefone
+    const telefoneLimpo = limparTelefone(telefone);
+    if (!validatePhone(telefoneLimpo)) {
+      return res.status(400).json({ error: 'Telefone inválido. Use o formato: (99) 99999-9999' });
+    }
 
     const cartao = await prisma.cartaoFidelidade.findUnique({
       where: { id: cartaoId },

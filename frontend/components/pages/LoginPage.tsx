@@ -1,6 +1,7 @@
 // frontend/src/components/pages/LoginPage.tsx
 import React, { useState } from 'react';
 import { GiftIcon, UserIcon, LockClosedIcon } from '../icons/Icons';
+import { InputField } from '../InputField';
 
 interface LoginPageProps {
   onLogin: (username: string, passwordHash: string) => void;
@@ -41,39 +42,25 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onNavigateToRegister, on
 
         <div className="bg-surface p-8 rounded-xl shadow-2xl">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-on-surface-secondary mb-1">Usuário</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <UserIcon className="h-5 w-5 text-on-surface-secondary" />
-                </span>
-                <input
-                  id="username"
-                  type="text"
-                  className="w-full bg-background text-on-surface p-3 pl-10 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-on-surface-secondary mb-1">Senha</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                  <LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />
-                </span>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  className="w-full bg-background text-on-surface p-3 pl-10 rounded-md border border-slate-600 focus:ring-2 focus:ring-primary focus:outline-none transition"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
+            <InputField
+              id="username"
+              label="Usuário"
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              icon={<UserIcon className="h-5 w-5 text-on-surface-secondary" />}
+              required
+            />
+            <InputField
+              id="password"
+              label="Senha"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              icon={<LockClosedIcon className="h-5 w-5 text-on-surface-secondary" />}
+              required
+              autoComplete="current-password"
+            />
             <button
               type="submit"
               disabled={busy}
