@@ -225,6 +225,14 @@ export async function superAdminSendNotification(secret: string, id: number, men
   }, { skipAuth: true });
 }
 
+export async function superAdminSendGlobalNotification(secret: string, mensagem: string, titulo?: string, tipo?: string) {
+  return request('/api/superadmin/notificacao-global', {
+    method: 'POST',
+    body: JSON.stringify({ mensagem, titulo, tipo }),
+    headers: superAdminOptions(secret).headers
+  }, { skipAuth: true });
+}
+
 // === Notificações ===
 export async function fetchNotificacoes() {
   return request('/api/notificacoes', {
@@ -273,6 +281,7 @@ export default {
   superAdminResetPassword,
   superAdminToggleStatus,
   superAdminSendNotification,
+  superAdminSendGlobalNotification,
   fetchNotificacoes,
   marcarNotificacaoLida,
   marcarTodasNotificacoesLidas,

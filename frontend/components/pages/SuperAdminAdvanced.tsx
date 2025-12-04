@@ -19,6 +19,7 @@ interface SuperAdminAdvancedProps {
   onForcePayment: (establishmentId: number, months: number) => Promise<void>;
   onToggleActive: (establishmentId: number, active: boolean) => Promise<void>;
   onSendNotification: (establishmentId: number, message: string) => Promise<void>;
+  onSendGlobalNotification: (message: string, title: string, type: string) => Promise<void>;
 }
 
 const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({ 
@@ -26,13 +27,17 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
   onResetPassword,
   onForcePayment,
   onToggleActive,
-  onSendNotification 
+  onSendNotification,
+  onSendGlobalNotification 
 }) => {
   const [selectedEstablishment, setSelectedEstablishment] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'password' | 'payment' | 'status' | 'notification'>('password');
   const [newPassword, setNewPassword] = useState('');
   const [paymentMonths, setPaymentMonths] = useState(1);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [globalNotificationMessage, setGlobalNotificationMessage] = useState('');
+  const [globalNotificationTitle, setGlobalNotificationTitle] = useState('Comunicado Importante');
+  const [globalNotificationType, setGlobalNotificationType] = useState('atualizacao');
   const [processing, setProcessing] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -108,6 +113,28 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
     }
   };
 
+  const handleSendGlobalNotification = async () => {
+    if (!globalNotificationMessage.trim()) {
+      alert('Insira uma mensagem para enviar');
+      return;
+    }
+    const count = establishments.length;
+    if (!confirm(`Confirmar envio de notificação para TODOS os ${count} estabelecimentos?`)) return;
+    setProcessing(true);
+    try {
+      await onSendGlobalNotification(globalNotificationMessage, globalNotificationTitle, globalNotificationType);
+      setSuccessMessage(`Notificação enviada para ${count} estabelecimentos!`);
+      setGlobalNotificationMessage('');
+      setGlobalNotificationTitle('Comunicado Importante');
+      setGlobalNotificationType('atualizacao');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      alert(err?.message || 'Erro ao enviar notificação global');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -124,6 +151,67 @@ const SuperAdminAdvanced: React.FC<SuperAdminAdvancedProps> = ({
           {successMessage}
         </div>
       )}
+
+      {/* Notificação Global */}
+      <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border-2 border-purple-500/50 p-6 rounded-lg shadow-lg">
+        <h2 className="text-xl font-bold text-on-surface mb-3 flex items-center gap-2">
+          <EnvelopeIcon className="w-6 h-6 text-purple-400" />
+          📢 Notificação Global (Todos os Estabelecimentos)
+        </h2>
+        <p className="text-on-surface-secondary mb-4 text-sm">
+          Envie uma notificação importante para <strong>TODOS</strong> os {establishments.length} estabelecimentos cadastrados. Use para comunicados de atualizações, manutenções, novidades ou avisos importantes.
+        </p>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Título da Notificação</label>
+              <input
+                type="text"
+                value={globalNotificationTitle}
+                onChange={(e) => setGlobalNotificationTitle(e.target.value)}
+                placeholder="Ex: Nova Atualização Disponível"
+                className="w-full bg-background text-on-surface p-3 rounded-md border border-purple-500/30 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-on-surface mb-2">Tipo de Notificação</label>
+              <select
+                value={globalNotificationType}
+                onChange={(e) => setGlobalNotificationType(e.target.value)}
+                className="w-full bg-background text-on-surface p-3 rounded-md border border-purple-500/30 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              >
+                <option value="atualizacao">🔔 Atualização</option>
+                <option value="info">ℹ️ Informação</option>
+                <option value="aviso">⚠️ Aviso</option>
+                <option value="promocao">🎉 Promoção</option>
+              </select>
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-semibold text-on-surface mb-2">Mensagem</label>
+            <textarea
+              value={globalNotificationMessage}
+              onChange={(e) => setGlobalNotificationMessage(e.target.value)}
+              placeholder="Digite a mensagem que será enviada para todos os estabelecimentos..."
+              rows={4}
+              className="w-full bg-background text-on-surface p-3 rounded-md border border-purple-500/30 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            />
+          </div>
+          
+          <button
+            onClick={handleSendGlobalNotification}
+            disabled={processing || !globalNotificationMessage.trim()}
+            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-4 px-6 rounded-md hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg"
+          >
+            <EnvelopeIcon className="w-5 h-5" />
+            {processing ? 'Enviando para todos...' : `Enviar para Todos (${establishments.length} estabelecimentos)`}
+          </button>
+        </div>
+      </div>
+
+      <div className="border-t border-surface my-6"></div>
 
       {/* Seletor de Estabelecimento */}
       <div className="bg-surface p-6 rounded-lg shadow-lg">

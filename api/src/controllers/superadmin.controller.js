@@ -321,6 +321,48 @@ async function enviarNotificacao(req, res) {
   }
 }
 
+async function enviarNotificacaoGlobal(req, res) {
+  try {
+    const { mensagem, titulo, tipo } = req.body;
+    
+    if (!mensagem || !mensagem.trim()) {
+      return res.status(400).json({ error: 'Mensagem não pode estar vazia' });
+    }
+
+    // Busca todos os estabelecimentos ativos
+    const estabelecimentos = await prisma.estabelecimento.findMany({
+      select: { id: true, nome: true }
+    });
+
+    if (estabelecimentos.length === 0) {
+      return res.status(404).json({ error: 'Nenhum estabelecimento encontrado' });
+    }
+
+    // Cria notificações para todos os estabelecimentos
+    const notificacoes = await prisma.notificacao.createMany({
+      data: estabelecimentos.map(estab => ({
+        estabelecimentoId: estab.id,
+        titulo: titulo?.trim() || 'Comunicado Importante',
+        mensagem: mensagem.trim(),
+        tipo: tipo || 'atualizacao',
+        lida: false
+      }))
+    });
+
+    console.log(`[SuperAdmin] ${notificacoes.count} notificações globais criadas para todos os estabelecimentos`);
+
+    return res.json({ 
+      ok: true, 
+      message: `Notificação enviada para ${notificacoes.count} estabelecimentos`,
+      count: notificacoes.count,
+      estabelecimentos: estabelecimentos.map(e => e.nome)
+    });
+  } catch (err) {
+    console.error('[SuperAdmin] erro enviarNotificacaoGlobal:', err && err.stack ? err.stack : err);
+    return res.status(500).json({ error: 'Erro ao enviar notificação global' });
+  }
+}
+
 module.exports = { 
   listar, 
   atualizar, 
@@ -328,7 +370,8 @@ module.exports = {
   registrarPagamentoManual,
   resetarSenha,
   alterarStatus,
-  enviarNotificacao
+  enviarNotificacao,
+  enviarNotificacaoGlobal
 };
 
 

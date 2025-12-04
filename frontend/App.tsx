@@ -43,7 +43,8 @@ import {
   superAdminAddPayment,
   superAdminResetPassword,
   superAdminToggleStatus,
-  superAdminSendNotification
+  superAdminSendNotification,
+  superAdminSendGlobalNotification
 } from './utils/api';
 
 // Em produção, usar raiz (/) pois frontend é servido pelo backend
@@ -709,6 +710,16 @@ const App: React.FC = () => {
     }
   }, [superAdminSecret]);
 
+  const handleSendGlobalNotification = useCallback(async (message: string, title: string, type: string) => {
+    if (!superAdminSecret) throw new Error('Não autorizado');
+    try {
+      const response = await superAdminSendGlobalNotification(superAdminSecret, message, title, type);
+      console.log('Notificação global enviada:', response);
+    } catch (err: any) {
+      throw new Error(err?.message || 'Erro ao enviar notificação global');
+    }
+  }, [superAdminSecret]);
+
   const renderEstablishmentPage = () => {
     if (!loggedInEstablishment) return null;
     switch (currentPage) {
@@ -775,6 +786,7 @@ const App: React.FC = () => {
             onForcePayment={handleForcePayment}
             onToggleActive={handleToggleActive}
             onSendNotification={handleSendNotification}
+            onSendGlobalNotification={handleSendGlobalNotification}
           />
         );
       case 'themeSettings':

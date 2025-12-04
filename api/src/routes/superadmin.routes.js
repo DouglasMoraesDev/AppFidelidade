@@ -8,7 +8,8 @@ const {
   registrarPagamentoManual,
   resetarSenha,
   alterarStatus,
-  enviarNotificacao
+  enviarNotificacao,
+  enviarNotificacaoGlobal
 } = require('../controllers/superadmin.controller');
 
 router.use(superAdminAuth);
@@ -20,6 +21,7 @@ router.post('/estabelecimentos/:id/pagamentos', registrarPagamentoManual);
 router.post('/estabelecimentos/:id/resetar-senha', resetarSenha);
 router.patch('/estabelecimentos/:id/status', alterarStatus);
 router.post('/estabelecimentos/:id/notificacao', enviarNotificacao);
+router.post('/notificacao-global', enviarNotificacaoGlobal);
 
 module.exports = router;
 
