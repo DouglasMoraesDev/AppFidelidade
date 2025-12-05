@@ -59,6 +59,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -138,7 +139,10 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusMsg(null);
-    if (!validate()) return;
+    if (!validate()) {
+      setShowErrorModal(true);
+      return;
+    }
 
     if (!logoFile) return;
 
@@ -207,8 +211,62 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
     }
   };
 
+  const getFieldLabel = (fieldKey: string): string => {
+    const labels: Record<string, string> = {
+      name: 'Nome do Estabelecimento',
+      email: 'E-mail',
+      cpfCnpj: 'CPF/CNPJ',
+      phone: 'Telefone',
+      username: 'Usuário de Acesso',
+      password: 'Senha',
+      confirmPassword: 'Confirmar Senha',
+      pointsForVoucher: 'Pontos para Voucher',
+      logo: 'Logo do Estabelecimento'
+    };
+    return labels[fieldKey] || fieldKey;
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      {/* Modal de Erros */}
+      {showErrorModal && Object.keys(errors).length > 0 && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-on-surface">Atenção!</h3>
+            </div>
+            
+            <p className="text-on-surface-secondary mb-4">
+              Corrija os seguintes campos antes de continuar:
+            </p>
+            
+            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+              {Object.entries(errors).map(([field, message]) => (
+                <div key={field} className="flex items-start gap-2 p-2 bg-red-500/10 rounded border border-red-500/30">
+                  <span className="text-red-500 font-bold">•</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-on-surface">{getFieldLabel(field)}</p>
+                    <p className="text-xs text-on-surface-secondary">{message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="w-full bg-primary text-white font-bold py-3 px-4 rounded-lg hover:bg-primary-focus transition-colors"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <GiftIcon className="h-16 w-16 text-primary mx-auto" />
@@ -307,6 +365,15 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
 
             <div className="border-t border-slate-600 my-2"></div>
 
+            <div className="mb-3 p-3 bg-primary/10 rounded-lg border border-primary/30">
+              <p className="text-sm text-on-surface font-medium">
+                📱 <strong>Dados de Acesso ao App</strong>
+              </p>
+              <p className="text-xs text-on-surface-secondary mt-1">
+                Crie um nome de usuário e senha para fazer login no aplicativo e gerenciar seus clientes.
+              </p>
+            </div>
+
             <InputField 
               id="username" 
               label="Usuário de Acesso" 
@@ -314,6 +381,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onRegister, onNavigateToLog
               value={formData.username} 
               onChange={handleChange} 
               icon={<UserIcon className="h-5 w-5 text-on-surface-secondary" />}
+              placeholder="Ex: meunegocio123"
               required
               error={errors.username}
             />
